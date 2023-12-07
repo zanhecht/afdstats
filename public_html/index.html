@@ -13,7 +13,7 @@
 <p>This tool will analyze the <a href="https://en.wikipedia.org/wiki/Wikipedia:Articles for deletion">AfD</a> voting history of a user and report statistical results (English Wikipedia only).  The tool searches through the wikitext of AfD pages that have been edited by the user specified below, and attempts to find their vote by searching for their signature on the page.</p>
 
 <div id="afdstatsform">
-<form action="afdstats.py" method="get">
+<form action="afdstats2.py" method="get">
 <table>
   <tr>
     <td><label>Username:<span class="small">(case sensitive)</span></label></td>
@@ -48,6 +48,7 @@
 <p>You can also specify the maximum number of AfD's to search through (maximum is 500 at this time).  In some cases, the number of AfD's displayed will be less than the maximum number specified.  This can happen when a user edits an AfD page but doesn't vote (e.g. just leaves a comment).</p>
 <p>The Alternate Name field can be used in cases where the user's username does not appear in their signature.  This can happen if the user underwent a username change at some point (because their old edits will have the signature of a different username applied to them), or if their signature simply doesn't include a link to their user page (e.g. if their signature links to a different page that redirects to their user page).</p>
 
-<footer>Bugs, suggestions, questions?  Contact the maintainers at <a href="http://en.wikipedia.org/wiki/User_talk:Enterprisey">User talk:Enterprisey</a> and <a href="http://en.wikipedia.org/wiki/User_talk:Σ">User talk:Σ</a> • <a href="https://github.com/APerson241/afdstats" title="afdstats on GitHub">Source code</a></footer>
+<footer><p>Based on <a href="https://afdstats.toolforge.org">AfD Statistics Tool</a> by <a href="//en.wikipedia.org/wiki/User_talk:Enterprisey">User talk:Enterprisey</a> and <a href="http://en.wikipedia.org/wiki/User_talk:Σ">User talk:Σ</a> (<a href="https://github.com/APerson241/afdstats" title="afdstats on GitHub">Original source code</a>)</p>
+<p>Bugs, suggestions, questions?  Contact the modifier at <a href="//en.wikipedia.org/wiki/User_talk:Ahecht">User talk:Ahecht</a> • <a href="https://github.com/zanhecht/afdstats" title="afdstats on GitHub">Source code</a></footer>
 </body>
 </html>
