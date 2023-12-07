@@ -1,4 +1,4 @@
-#! /data/project/afdstats/pyvenv/bin/python3
+#! /data/project/afdstats2/pyvenv/bin/python3
 # -*- coding: utf-8 -*-
 
 import cgitb; cgitb.enable()
@@ -32,7 +32,7 @@ for v in statsvotes:
 for v in votetypes:
 	stats[v] = 0
 
-FOOTER = '<footer>Bugs, suggestions, questions?  Contact the maintainers at <a href="http://en.wikipedia.org/wiki/User_talk:Enterprisey">User talk:Enterprisey</a> and <a href="http://en.wikipedia.org/wiki/User_talk:Σ">User talk:Σ</a> • <a href="https://github.com/enterprisey/afdstats" title="afdstats on GitHub">Source code</a></footer>'
+FOOTER = '<footer><p>Based on <a href="https://afdstats.toolforge.org">AfD Statistics Tool</a> by <a href="//en.wikipedia.org/wiki/User_talk:Enterprisey">User talk:Enterprisey</a> and <a href="http://en.wikipedia.org/wiki/User_talk:Σ">User talk:Σ</a> (<a href="https://github.com/APerson241/afdstats" title="afdstats on GitHub">Original source code</a>)</p><p>Bugs, suggestions, questions?  Contact the modifier at <a href="//en.wikipedia.org/wiki/User_talk:Ahecht">User talk:Ahecht</a> • <a href="https://github.com/zanhecht/afdstats" title="afdstats on GitHub">Source code</a></footer>'
 
 def main():
 	global MAXLIMIT
