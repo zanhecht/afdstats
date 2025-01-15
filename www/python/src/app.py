@@ -58,6 +58,7 @@ def app(environ, start_response):
 	start_response('404 Not Found', [('Content-Type', 'text/plain')])
 	return [b"404 Not Found"]
 
+# afdstats.py main function
 def main(environ, start_response):
 	# initialize variables
 	matchstats = [0, 0, 0]  # matches, non-matches, no consensus
