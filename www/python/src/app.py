@@ -69,14 +69,12 @@ def app(environ, start_response):
 		##################Validate input
 		# form = cgi.FieldStorage()
 		form = urllib.parse.parse_qs(environ.get("QUERY_STRING", ""))
-		username = (
-			urllib.parse.unquote_plus(form.get("name", "")).replace("_", " ").strip()
-		)
+		username = urllib.parse.unquote_plus(form.get("name", "")).replace("_", " ").strip()
 		if username == "":
 			return errorout(
 				start_response,
 				output,
-				f"No username entered.<!--QUERY_STRING: {environ.get('QUERY_STRING', '')}-->",
+				f"No username entered.<!--{environ.get('QUERY_STRING', '')}-->",
 			)
 		username = username[0].capitalize() + username[1:]
 		altusername = (
@@ -108,9 +106,7 @@ def app(environ, start_response):
 		startdatestr = ""
 		try:
 			if (
-				len(startdate) == 8
-				and int(startdate) > 20000000
-				and int(startdate) < 20300000
+				len(startdate) == 8 and int(startdate) > 20000000 and int(startdate) < 20300000
 			):
 				startdatestr = " AND rev_timestamp<=" + startdate + "235959"
 		except (NameError, TypeError, ValueError):
@@ -151,9 +147,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 		)
 
 		if startdate:
-			datestr = datetime.datetime.strptime(startdate, "%Y%m%d").strftime(
-				"%b %d %Y"
-			)
+			datestr = datetime.datetime.strptime(startdate, "%Y%m%d").strftime("%b %d %Y")
 			output.append(
 				f"Total number of unique AfD pages edited by {username} (from {datestr} and earlier): {str(len(results))}<br>"
 			)
@@ -163,9 +157,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 			)
 
 		if len(results) > maxsearch:
-			output.append(
-				f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>"
-			)
+			output.append(f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>")
 
 		##################Analyze results
 		pages = results[: min(maxsearch, len(results))]
@@ -267,8 +259,7 @@ Show pages without detected votes
 
 						# Check if the vote was made by the user we're counting votes for
 						if (
-							voter.lower() == username.lower()
-							or voter.lower() == altusername.lower()
+							voter.lower() == username.lower() or voter.lower() == altusername.lower()
 						):
 							votetype = parsevote(vote[3 : vote.find("'", 3)])
 							if votetype is None:
@@ -282,9 +273,7 @@ Show pages without detected votes
 								votetime = ""
 							else:
 								votetime = parsetime(timematch.group(1))
-							dupvotes.append(
-								(page, votetype, votetime, result, 0, deletionreviews)
-							)
+							dupvotes.append((page, votetype, votetime, result, 0, deletionreviews))
 					except Exception as err:
 						# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
 						continue
@@ -354,9 +343,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			for vv in STATS_VOTES:
 				output.append(f"<tr>\n<th>{vv.upper()}</th>")
 				for rr in STATS_RESULTS:
-					output.append(
-						matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>"
-					)
+					output.append(matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>")
 				output.append("</tr>")
 			output.append(
 				"""</tbody>
@@ -581,9 +568,7 @@ def findDRV(
 			)
 			if drvdate:
 				drvcounter += 1
-				name = re.search(
-					"\|page=(.*?)(?:\||$)", drv.group(1), flags=re.IGNORECASE
-				)
+				name = re.search("\|page=(.*?)(?:\||$)", drv.group(1), flags=re.IGNORECASE)
 				if name:
 					nametext = urllib.parse.quote(name.group(1))
 				else:
@@ -746,9 +731,7 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AFDs using the A
 		p = ""
 		for page in rawpagelist:
 			if page[0]:
-				p += urllib.parse.quote(
-					"Wikipedia:" + page[0].decode().replace("_", " ") + "|"
-				)
+				p += urllib.parse.quote("Wikipedia:" + page[0].decode().replace("_", " ") + "|")
 		u = urlopen(
 			"http://en.wikipedia.org/w/api.php?action=query&prop=revisions|info&rvprop=content&format=xml&titles="
 			+ p[:-3]
