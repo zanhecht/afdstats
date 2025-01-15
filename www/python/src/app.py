@@ -12,6 +12,7 @@ import time
 import html
 
 # Constants
+APP_NAME = "afdstats.py"
 MAX_LIMIT = 500
 STATS_RESULTS = ["k", "d", "sk", "sd", "m", "r", "t", "u", "nc"]
 STATS_VOTES = STATS_RESULTS[:-1]
@@ -34,8 +35,8 @@ at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia ta
 
 
 def app(environ, start_response):
-	# Produce 404 error if not accessed at afdstats.py
-	if environ.get("PATH_INFO", "/").lstrip("/") != "afdstats.py":
+	# Produce 404 error if not accessed at APP_NAME
+	if environ.get("PATH_INFO", "/").lstrip("/") != APP_NAME:
 		start_response("404 Not Found", [("Content-Type", "text/plain")])
 		return [b"404 Not Found"]
 
@@ -369,7 +370,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			afds_output = ["<h2>Individual AFDs</h2>"]
 			if len(tablelist) > 0 and tablelist[-1][2]:
 				afds_output.append(
-					f'<a href="afdstats.py?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}"><small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>'
+					f'<a href="{APP_NAME}?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}"><small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>'
 				)
 			afds_output.append("</div>")
 			afds_output.append(
@@ -396,7 +397,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			afds_output.append("</tbody>\n</table>")
 			afds_output.append('<div style="width:875px;">')
 			afds_output.append(
-				f'<a href="afdstats.py?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}">'
+				f'<a href="{APP_NAME}?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}">'
 			)
 			afds_output.append(
 				f"<small>Next {str(maxsearch)} AFDs &rarr;</small></a><br><br>"
