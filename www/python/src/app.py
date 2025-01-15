@@ -94,7 +94,7 @@ def app(environ, start_response):
 			stats["UNDETERMINED"] = 0
 		try:
 			maxsearch = min(MAX_LIMIT, int(form["max"][0]))
-		except Exception:
+		except (NameError, KeyError, TypeError, ValueError):
 			maxsearch = 200
 
 		##################Query database
@@ -105,6 +105,7 @@ def app(environ, start_response):
 		)
 		cursor = db.cursor()
 
+		startdatestr = ""
 		try:
 			if (
 				len(startdate) == 8
@@ -112,10 +113,8 @@ def app(environ, start_response):
 				and int(startdate) < 20300000
 			):
 				startdatestr = " AND rev_timestamp<=" + startdate + "235959"
-			else:
-				startdatestr = ""
-		except (TypeError, ValueError):
-			startdatestr = ""
+		except (NameError, TypeError, ValueError):
+			pass
 
 		if nomsonly:
 			cursor.execute(
