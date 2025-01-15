@@ -284,7 +284,7 @@ Show pages without detected votes
 						tablelist.append(
 							(page, "Delete", firsteditor[1], result, 1, deletionreviews)
 						)
-						stats = updatestats(stats, "Delete", result)
+						updatestats(stats, "Delete", result)
 					else:
 						closermatch = find_voter_match(result_data) or ""
 						if isinstance(closermatch, re.Match):
@@ -297,10 +297,10 @@ Show pages without detected votes
 				elif len(dupvotes) > 1:
 					ch = len(dupvotes) - 1
 					tablelist.append(dupvotes[ch])
-					stats = updatestats(stats, dupvotes[ch][1], dupvotes[ch][3])
+					updatestats(stats, dupvotes[ch][1], dupvotes[ch][3])
 				else:
 					tablelist.append(dupvotes[0])
-					stats = updatestats(stats, dupvotes[0][1], dupvotes[0][3])
+					updatestats(stats, dupvotes[0][1], dupvotes[0][3])
 			except Exception as err:
 				# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
 				continue
@@ -390,7 +390,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 				afds_output.append(
 					f"<td>{link(i[0])}</td>\n<td>{i[2]}</td>\n<td>{i[1]}{' (Nom)' if i[4] == 1 else ''}</td>"
 				)
-				matchstats, matchcell = match(matchstats, i[1], i[3], i[5])
+				matchcell = match(matchstats, i[1], i[3], i[5])
 				afds_output.append(matchcell)
 				afds_output.append("</tr>")
 			afds_output.append("</tbody>\n</table>")
@@ -612,7 +612,7 @@ def updatestats(stats, v, r):  # Update the stats variable for votes
 	else:
 		if ("UNDETERMINED" in stats) and (v == "UNDETERMINED"):
 			stats["UNDETERMINED"] += 1
-		return stats
+		return
 	stats[v] += 1
 	if r == "Merge":
 		rr = "m"
@@ -633,49 +633,48 @@ def updatestats(stats, v, r):  # Update the stats variable for votes
 	elif r == "No Consensus":
 		rr = "nc"
 	else:
-		return stats
+		return
 	stats[vv + rr] += 1
-	return stats
 
 
 def match(matchstats, v, r, drv):  # Update the matchstats variable
 	if r == "Not closed yet":
-		return matchstats, f'<td class="m">{r}{drv}</td>'
+		return f'<td class="m">{r}{drv}</td>'
 	elif r == "UNDETERMINED" or v == "UNDETERMINED":
-		return matchstats, f'<td class="m">{r}{drv}</td>'
+		return f'<td class="m">{r}{drv}</td>'
 	elif r == "No Consensus":
 		matchstats[2] += 1
-		return matchstats, f'<td class="m">{r}{drv}</td>'
+		return f'<td class="m">{r}{drv}</td>'
 	elif v == r:
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif v == "Speedy Keep" and r == "Keep":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif r == "Speedy Keep" and v == "Keep":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif v == "Speedy Delete" and r == "Delete":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif r == "Speedy Delete" and v == "Delete":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif r == "Redirect" and v == "Delete":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif r == "Delete" and v == "Redirect":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif r == "Merge" and v == "Redirect":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	elif r == "Redirect" and v == "Merge":
 		matchstats[0] += 1
-		return matchstats, f'<td class="y">{r}{drv}</td>'
+		return f'<td class="y">{r}{drv}</td>'
 	else:
 		matchstats[1] += 1
-		return matchstats, f'<td class="n">{r}{drv}</td>'
+		return f'<td class="n">{r}{drv}</td>'
 
 
 def matrixmatch(
