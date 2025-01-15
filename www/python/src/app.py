@@ -112,20 +112,22 @@ def app(environ, start_response):
 		except (NameError, TypeError, ValueError):
 			pass
 
+		querystr = (
+			"page_title FROM revision_userindex"
+			+ " JOIN page ON rev_page=page_id"
+			+ " JOIN actor_revision ON actor_id=rev_actor"
+			+ " WHERE actor_name=%s AND page_namespace=4"
+			+ ' AND page_title LIKE "Articles_for_deletion%%"'
+			+ ' AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
+		)
 		if nomsonly:
-			cursor.execute(
-				'SELECT page_title FROM revision_userindex JOIN page ON rev_page=page_id JOIN actor_revision ON actor_id=rev_actor WHERE actor_name=%s AND page_namespace=4 AND page_title LIKE "Articles_for_deletion%%" AND NOT page_title LIKE "Articles_for_deletion/Log/%%" AND rev_parent_id=0'
-				+ startdatestr
-				+ " ORDER BY rev_timestamp DESC;",
-				(username,),
-			)
+			querystr = f"SELECT {querystr} AND rev_parent_id=0"
 		else:
-			cursor.execute(
-				'SELECT DISTINCT page_title FROM revision_userindex JOIN page ON rev_page=page_id JOIN actor_revision ON actor_id=rev_actor WHERE actor_name=%s AND page_namespace=4 AND page_title LIKE "Articles_for_deletion%%" AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
-				+ startdatestr
-				+ " ORDER BY rev_timestamp DESC;",
-				(username,),
-			)
+			querystr = f"SELECT DISTINCT {querystr}"
+		cursor.execute(
+			f"{querystr}{startdatestr} ORDER BY rev_timestamp DESC;",
+			(username,),
+		)
 		results = cursor.fetchall()
 
 		output.append(f"<h1>AfD Statistics for User:{html.escape(username)}</h1>")
@@ -326,7 +328,8 @@ Show pages without detected votes
 The only AFDs included in this matrix are those that have already closed,
 where both the vote and result could be reliably determined.
 Results are across the top, and the user's votes down the side.
-Green cells indicate "matches", meaning that the user's vote matched (or closely resembled) the way the AfD eventually closed,
+Green cells indicate "matches", meaning that the user's vote matched
+(or closely resembled) the way the AfD eventually closed,
 whereas red cells indicate that the vote and the end result did not match.</p>
 </div>
 <table border=1 style="float:left;" class="matrix">
@@ -677,7 +680,9 @@ def match(matchstats, v, r, drv):  # Update the matchstats variable
 
 def matrixmatch(
 	stats, v, r
-):  # Returns html to color the cell of the matrix table correctly, depending on whether there is a match/non-match (red/green), or if the cell is zero/non-zero (bright/dull).
+):  # Returns html to color the cell of the matrix table correctly,
+	# depending on whether there is a match/non-match (red/green),
+	# or if the cell is zero/non-zero (bright/dull).
 	if stats[v + r]:
 		if r == "nc":
 			return '<td class="mm">'
@@ -761,7 +766,10 @@ def DBfirsteditor(
 ):  # Finds the name of the user who created a particular page, using a database query.  Replaces APIfirsteditor()
 	try:
 		cursor.execute(
-			"SELECT actor_name, rev_timestamp FROM revision JOIN page ON rev_page=page_id JOIN actor_revision ON actor_id=rev_actor WHERE rev_parent_id=0 AND page_title=%s AND page_namespace=4;",
+			"SELECT actor_name, rev_timestamp FROM revision"
+			+ " JOIN page ON rev_page=page_id"
+			+ " JOIN actor_revision ON actor_id=rev_actor"
+			+ " WHERE rev_parent_id=0 AND page_title=%s AND page_namespace=4;",
 			(p.replace(" ", "_"),),
 		)
 		results = cursor.fetchall()[0]
