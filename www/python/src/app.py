@@ -33,6 +33,11 @@ at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia ta
 # TODO: Provide link to usersearch.py that will show all AfD edits during the time period that this search covers
 
 def app(environ, start_response):
+	#Produce 404 error if not accessed at afdstats.py
+	if environ.get('PATH_INFO', '/').lstrip('/') != 'afdstats.py':
+		start_response('404 Not Found', [('Content-Type', 'text/plain')])
+		return [b"404 Not Found"]
+
 	# initialize variables
 	matchstats = [0, 0, 0]  # matches, non-matches, no consensus
 	stats = {}
