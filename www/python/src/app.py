@@ -66,42 +66,22 @@ def app(environ, start_response):
 		##################Validate input
 		# form = cgi.FieldStorage()
 		form = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
-		if "name" not in form:
-			return errorout(start_response, output, f"No username entered.<!--QUERY_STRING: {environ.get('QUERY_STRING', 'not found')}-->")
-		username = urllib.parse.unquote_plus(form["name"][0]).replace("_", " ").strip()
+		username = urllib.parse.unquote_plus(form.get('name', '')).replace("_", " ").strip()
+		if username == '':
+			return errorout(start_response, output, f"No username entered.<!--QUERY_STRING: {environ.get('QUERY_STRING', '')}-->")
 		username = username[0].capitalize() + username[1:]
-
-		maxsearch = 200
-		if "max" in form:
-			try:
-				maxsearch = min(MAX_LIMIT, int(form["max"][0]))
-			except:
-				maxsearch = 200
-
-		if "startdate" in form:
-			startdate = str(form["startdate"][0])
-		else:
-			startdate = ""
-
-		nomsonly = False
-		if "nomsonly" in form:
-			if form["nomsonly"][0].lower() in ["1", "true", "yes"]:
-				nomsonly = True
-
-		undetermined = False  # set to true to show undetermined votes by default
-		if "undetermined" in form:
-			if form["undetermined"][0].lower() in ["1", "true", "yes"]:
-				undetermined = True
-
+		altusername = urllib.parse.unquote_plus(form.get('altname', '')).replace("_", " ").strip()
+		startdate = str(form.get('startdate', ''))
+		nomsonly = True if form.get('nomsonly', '').lower() in ["1", "true", "yes"] else False
+		undetermined = True if form.get('undetermined', '').lower() in ["1", "true", "yes"] else False
 		if undetermined == True:
 			votetypes.append("UNDETERMINED")
 			stats["UNDETERMINED"] = 0
-
-		if "altname" in form:
-			altusername = urllib.parse.unquote_plus(form["altname"][0]).replace("_", " ").strip()
-		else:
-			altusername = ""
-
+		try:
+			maxsearch = min(MAX_LIMIT, int(form["max"][0]))
+		except:
+			maxsearch = 200
+			
 		##################Query database
 		db = pymysql.connect(
 			db="enwiki_p",
