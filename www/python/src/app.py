@@ -32,33 +32,7 @@ at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia ta
 
 # TODO: Provide link to usersearch.py that will show all AfD edits during the time period that this search covers
 
-# WSGI app
 def app(environ, start_response):
-	static_dir = os.environ.get('STATIC_DIR')
-	CONTENT_TYPES = {
-		'.css': 'text/css',
-		'.html': 'text/html',
-		'.ico': 'image/x-icon'
-	}
-	path_info = environ.get('PATH_INFO', '/')
-	if path_info == '/':
-		path_info = '/index.html'
-	file_name = path_info.lstrip('/')
-	static_file_path = os.path.join(static_dir, file_name)
-	if os.path.exists(static_file_path):
-		with open(static_file_path, 'rb') as f:
-			content = f.read()
-		ext = os.path.splitext(path_info)[1]
-		content_type = CONTENT_TYPES.get(ext, 'application/octet-stream')
-		start_response('200 OK', [('Content-Type', content_type)])
-		return [content]
-	elif file_name == 'afdstats.py':
-		return main(environ, start_response)
-	start_response('404 Not Found', [('Content-Type', 'text/plain')])
-	return [b"404 Not Found"]
-
-# afdstats.py main function
-def main(environ, start_response):
 	# initialize variables
 	matchstats = [0, 0, 0]  # matches, non-matches, no consensus
 	stats = {}
