@@ -32,10 +32,11 @@ at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia ta
 
 # TODO: Provide link to usersearch.py that will show all AfD edits during the time period that this search covers
 
+
 def app(environ, start_response):
-	#Produce 404 error if not accessed at afdstats.py
-	if environ.get('PATH_INFO', '/').lstrip('/') != 'afdstats.py':
-		start_response('404 Not Found', [('Content-Type', 'text/plain')])
+	# Produce 404 error if not accessed at afdstats.py
+	if environ.get("PATH_INFO", "/").lstrip("/") != "afdstats.py":
+		start_response("404 Not Found", [("Content-Type", "text/plain")])
 		return [b"404 Not Found"]
 
 	# initialize variables
@@ -48,7 +49,8 @@ def app(environ, start_response):
 	for v in votetypes:
 		stats[v] = 0
 
-	output = ["""<!doctype html>
+	output = [
+		"""<!doctype html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
@@ -58,30 +60,43 @@ def app(environ, start_response):
 </head>
 <body>
 <div style="width:875px;">
-<a href='/'><small>&larr;New search</small></a>"""]
+<a href='/'><small>&larr;New search</small></a>"""
+	]
 
 	try:
 		starttime = time.time()
 
 		##################Validate input
 		# form = cgi.FieldStorage()
-		form = urllib.parse.parse_qs(environ.get('QUERY_STRING', ''))
-		username = urllib.parse.unquote_plus(form.get('name', '')).replace("_", " ").strip()
-		if username == '':
-			return errorout(start_response, output, f"No username entered.<!--QUERY_STRING: {environ.get('QUERY_STRING', '')}-->")
+		form = urllib.parse.parse_qs(environ.get("QUERY_STRING", ""))
+		username = (
+			urllib.parse.unquote_plus(form.get("name", "")).replace("_", " ").strip()
+		)
+		if username == "":
+			return errorout(
+				start_response,
+				output,
+				f"No username entered.<!--QUERY_STRING: {environ.get('QUERY_STRING', '')}-->",
+			)
 		username = username[0].capitalize() + username[1:]
-		altusername = urllib.parse.unquote_plus(form.get('altname', '')).replace("_", " ").strip()
-		startdate = str(form.get('startdate', ''))
-		nomsonly = True if form.get('nomsonly', '').lower() in ["1", "true", "yes"] else False
-		undetermined = True if form.get('undetermined', '').lower() in ["1", "true", "yes"] else False
-		if undetermined == True:
+		altusername = (
+			urllib.parse.unquote_plus(form.get("altname", "")).replace("_", " ").strip()
+		)
+		startdate = str(form.get("startdate", ""))
+		nomsonly = (
+			True if form.get("nomsonly", "").lower() in ["1", "true", "yes"] else False
+		)
+		undetermined = (
+			True if form.get("undetermined", "").lower() in ["1", "true", "yes"] else False
+		)
+		if undetermined is True:
 			votetypes.append("UNDETERMINED")
 			stats["UNDETERMINED"] = 0
 		try:
 			maxsearch = min(MAX_LIMIT, int(form["max"][0]))
-		except:
+		except Exception:
 			maxsearch = 200
-			
+
 		##################Query database
 		db = pymysql.connect(
 			db="enwiki_p",
@@ -99,7 +114,7 @@ def app(environ, start_response):
 				startdatestr = " AND rev_timestamp<=" + startdate + "235959"
 			else:
 				startdatestr = ""
-		except:
+		except (TypeError, ValueError):
 			startdatestr = ""
 
 		if nomsonly:
@@ -121,14 +136,20 @@ def app(environ, start_response):
 		output.append(f"<h1>AfD Statistics for User:{html.escape(username)}</h1>")
 
 		if len(results) == 0:
-			return errorout(start_response, output, """No AFDs found. This user may not exist.
+			return errorout(
+				start_response,
+				output,
+				"""No AFDs found. This user may not exist.
 Note that if the user's username does not appear in the wikitext of their signature,
-you may need to specify an alternate name.""")
+you may need to specify an alternate name.""",
+			)
 
-		output.append("""<p>These statistics were compiled by an automated process,
+		output.append(
+			"""<p>These statistics were compiled by an automated process,
 and may contain errors or omissions due to the wide variety of styles with which people cast votes at AfD.
 Any result fields which contain "UNDETERMINED" were not able to be parsed, and should be examined manually.</p>
-<h2>Vote totals</h2>""")
+<h2>Vote totals</h2>"""
+		)
 
 		if startdate:
 			datestr = datetime.datetime.strptime(startdate, "%Y%m%d").strftime(
@@ -143,7 +164,9 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 			)
 
 		if len(results) > maxsearch:
-			output.append(f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>")
+			output.append(
+				f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>"
+			)
 
 		##################Analyze results
 		pages = results[: min(maxsearch, len(results))]
@@ -163,7 +186,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 		novotes = 0
 
 		output.append(
-"""<small>
+			"""<small>
 <a href="javascript:void(0);" onClick="if(document.getElementById('noVote').style.display === 'none') {document.getElementById('noVote').style.display = 'block';this.innerHTML='Hide pages without detected votes';} else {document.getElementById('noVote').style.display = 'none';this.innerHTML='Show pages without detected votes';}">
 Show pages without detected votes
 </a>
@@ -209,11 +232,13 @@ Show pages without detected votes
 						else vote.rfind("[[user")
 					)
 
-				find_voter_match = lambda vote: re.match(
-					"\[\[User.*?:(.*?)(?:\||(?:\]\]))",
-					vote[find_user_idx(vote) :],
-					flags=re.IGNORECASE,
-				)
+				def find_voter_match(vote):
+					return re.match(
+						"\[\[User.*?:(.*?)(?:\||(?:\]\]))",
+						vote[find_user_idx(vote) :],
+						flags=re.IGNORECASE,
+					)
+
 				firsteditor = DBfirsteditor(page, cursor)
 				is_nominator = False
 				if (firsteditor[0].lower() == username.lower()) or (
@@ -224,7 +249,7 @@ Show pages without detected votes
 				for vote in votes:
 					try:
 						votermatch = find_voter_match(vote)
-						if votermatch == None:
+						if votermatch is None:
 							continue
 						voter = votermatch.group(1).strip()
 
@@ -247,14 +272,14 @@ Show pages without detected votes
 							or voter.lower() == altusername.lower()
 						):
 							votetype = parsevote(vote[3 : vote.find("'", 3)])
-							if votetype == None:
+							if votetype is None:
 								continue
 							if (votetype == "UNDETERMINED") and (
-								(undetermined == False) or (is_nominator == True)
+								(undetermined is False) or (is_nominator is True)
 							):
 								continue
 							timematch = re.search("(\d{2}:\d{2}, .*?) \(UTC\)", vote)
-							if timematch == None:
+							if timematch is None:
 								votetime = ""
 							else:
 								votetime = parsetime(timematch.group(1))
@@ -262,7 +287,7 @@ Show pages without detected votes
 								(page, votetype, votetime, result, 0, deletionreviews)
 							)
 					except Exception as err:
-						# output.append(f"<br>ERROR: {str(err)} ({traceback.format_exc()})") #debug
+						# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
 						continue
 				if len(dupvotes) < 1:
 					if is_nominator:  # user is nominator
@@ -287,7 +312,7 @@ Show pages without detected votes
 					tablelist.append(dupvotes[0])
 					stats = updatestats(stats, dupvotes[0][1], dupvotes[0][3])
 			except Exception as err:
-				# output.append(f"<br>ERROR: {str(err)} ({traceback.format_exc()})") #debug
+				# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
 				continue
 		db.close()
 		output.append("</ul>")
@@ -307,7 +332,7 @@ Show pages without detected votes
 					f"The remaining {str(novotes)} pages had no discernible vote by this user."
 				)
 			output.append(
-"""<br>
+				"""<br>
 <h2>Voting matrix</h2>
 <p>This table compares the user's votes to the way the AfD eventually closed.
 The only AFDs included in this matrix are those that have already closed,
@@ -330,9 +355,12 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			for vv in STATS_VOTES:
 				output.append(f"<tr>\n<th>{vv.upper()}</th>")
 				for rr in STATS_RESULTS:
-					output.append(matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>")
+					output.append(
+						matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>"
+					)
 				output.append("</tr>")
-			output.append("""</tbody>
+			output.append(
+				"""</tbody>
 </table>
 <br><div style="float:left;padding:20px;">
 <small>Abbreviation key:
@@ -356,7 +384,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 				)
 			afds_output.append("</div>")
 			afds_output.append(
-"""<table>
+				"""<table>
 <thead>
 <tr>
 <th scope="col">Page</th>
@@ -369,14 +397,21 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			)
 
 			for i in tablelist:
-				afds_output.append(f"<tr>\n<td>{link(i[0])}</td>\n<td>{i[2]}</td>\n<td>{i[1]}{' (Nom)' if i[4] == 1 else ''}</td>")
+				afds_output.append("<tr>")
+				afds_output.append(
+					f"<td>{link(i[0])}</td>\n<td>{i[2]}</td>\n<td>{i[1]}{' (Nom)' if i[4] == 1 else ''}</td>"
+				)
 				matchstats, matchcell = match(matchstats, i[1], i[3], i[5])
 				afds_output.append(matchcell)
 				afds_output.append("</tr>")
 			afds_output.append("</tbody>\n</table>")
 			afds_output.append('<div style="width:875px;">')
-			afds_output.append(f'<a href="afdstats.py?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}">')
-			afds_output.append(f"<small>Next {str(maxsearch)} AFDs &rarr;</small></a><br><br>")
+			afds_output.append(
+				f'<a href="afdstats.py?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}">'
+			)
+			afds_output.append(
+				f"<small>Next {str(maxsearch)} AFDs &rarr;</small></a><br><br>"
+			)
 
 			total_votes = sum(matchstats)
 			if total_votes > 0:
@@ -397,12 +432,12 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 				)
 				if total_votes != matchstats[2]:
 					output.append(
-						"Without considering \"No Consensus\" results, <b>{:.1%} of AFDs were matches</b> and {:.1%} of AFDs were not.".format(
+						'Without considering "No Consensus" results, <b>{:.1%} of AFDs were matches</b> and {:.1%} of AFDs were not.'.format(
 							float(matchstats[0]) / (total_votes - matchstats[2]),
 							float(matchstats[1]) / (total_votes - matchstats[2]),
 						)
 					)
-			output.append('\n'.join(afds_output))
+			output.append("\n".join(afds_output))
 		else:
 			output.append("<br><br>No votes found.")
 
@@ -410,19 +445,22 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 		output.append(f"<small>Elapsed time: {elapsed} seconds.</small><br>")
 		output.append(FOOTER)
 		output.append(
-"""<a href="/"><small>&larr;New search</small></a>
+			"""<a href="/"><small>&larr;New search</small></a>
 </div>
 </body>
 </html>"""
 		)
-		start_response('200 OK', [('Content-Type', 'text/html')])
-		return ['\n'.join(output).encode('utf-8')]
+		start_response("200 OK", [("Content-Type", "text/html")])
+		return ["\n".join(output).encode("utf-8")]
 
 	except SystemExit:
 		sys.exit(0)
 	except Exception as err:
-		# return errorout(start_response, output, f"{html.escape(sys.exc_info()[0])}<br>{traceback.print_exc(file=sys.stdout)}<br>Fatal error.")
-		return errorout(start_response, output, f"{html.escape(str(err))}<br>Fatal error.")
+		return errorout(
+			start_response,
+			output,
+			f"{html.escape(str(err))}<br>{html.escape(traceback.format_exc())}<br>Fatal error.",
+		)
 
 
 def parsevote(v):
@@ -461,7 +499,7 @@ def parsevote(v):
 
 def parsetime(t):
 	tm = re.search("\d{2}:\d{2}, (\d{1,2}) ([A-Za-z]*) (\d{4})", t)
-	if tm == None:
+	if tm is None:
 		return ""
 	else:
 		return tm.group(2) + " " + tm.group(1) + ", " + tm.group(3)
@@ -473,7 +511,7 @@ def findresults(thepage):  # Parse through the text of an AfD to find how it was
 		thepage,
 		flags=re.IGNORECASE,
 	)
-	if resultsearch == None:
+	if resultsearch is None:
 		if (
 			"The following discussion is an archived debate of the proposed deletion of the article below"
 			in thepage
@@ -563,13 +601,11 @@ def findDRV(
 					+ "]</small></sup></a>"
 				)
 		return drvs
-	except:
+	except Exception:
 		return ""
 
 
-def updatestats(
-	stats, v, r
-):  # Update the stats variable for votes
+def updatestats(stats, v, r):  # Update the stats variable for votes
 	if v == "Merge":
 		vv = "m"
 	elif v == "Redirect":
@@ -615,9 +651,7 @@ def updatestats(
 	return stats
 
 
-def match(
-	matchstats, v, r, drv
-):  # Update the matchstats variable
+def match(matchstats, v, r, drv):  # Update the matchstats variable
 	if r == "Not closed yet":
 		return matchstats, f'<td class="m">{r}{drv}</td>'
 	elif r == "UNDETERMINED" or v == "UNDETERMINED":
@@ -733,7 +767,7 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AFDs using the A
 				if re.search('<page.*?redirect="".*?>', i):  # AfD page is a redirect
 					continue
 				pagedict[html.unescape(pagename)] = text
-			except:
+			except Exception:
 				continue
 		return pagedict
 	except Exception as err:
@@ -755,14 +789,14 @@ def DBfirsteditor(
 				"%B %d, %Y"
 			),
 		)
-	except Exception as err:
+	except Exception:
 		return None
 
 
 def datefmt(datestr):
 	try:
 		tg = re.search("([A-Za-z]*) (\d{1,2}), (\d{4})", datestr)
-		if tg == None:
+		if tg is None:
 			return ""
 		monthmap = {
 			"01": "January",
@@ -784,7 +818,7 @@ def datefmt(datestr):
 		if len(day) == 1:
 			day = "0" + day
 		return year + month + day
-	except:
+	except Exception:
 		return ""
 
 
@@ -802,14 +836,12 @@ def link(p):
 
 
 def errorout(
-	start_response,
-	output,
-	errorstr
+	start_response, output, errorstr
 ):  # General error handler, prints error message and aborts execution.
 	output.append(
 		f"<p>ERROR: {errorstr}</p><p>Please <a href='http://afdstats.toolforge.org/'>try again</a>.</p>"
 	)
 	output.append(FOOTER)
 	output.append("</div>\n</body>\n</html>")
-	start_response('500 Internal Server Error', [('Content-Type', 'text/html')])
-	return ['\n'.join(output).encode('utf-8')]
+	start_response("500 Internal Server Error", [("Content-Type", "text/html")])
+	return ["\n".join(output).encode("utf-8")]
