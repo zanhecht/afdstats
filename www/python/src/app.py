@@ -14,6 +14,7 @@ import html
 # Constants
 APP_NAME = "afdstats.py"
 MAX_LIMIT = 500
+WIKI_URL = "http://en.wikipedia.org/"
 FOOTER = "<footer>Bugs, suggestions, questions? Contact the"
 +' <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a> at'
 +' <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">'
@@ -402,8 +403,8 @@ def app(environ, start_response):
 							closermatch = f" (closer: {closermatch.group(1).strip()})"
 
 						output.append(
-							"<li><a href = 'https://en.wikipedia.org/wiki/Wikipedia:{}'>{}</a>{}</li>".format(
-								urllib.parse.quote(page), page, closermatch
+							"<li><a href = '{}wiki/Wikipedia:{}'>{}</a>{}</li>".format(
+								WIKI_URL, urllib.parse.quote(page), page, closermatch
 							)
 						)
 						novotes += 1
@@ -611,6 +612,7 @@ def findDRV(thepage, pagename):
 	try:
 		drvs = ""
 		drvcounter = 0
+		baseurl = WIKI_URL + "/wiki/Wikipedia:Deletion_review/Log/"
 		for drv in DRV_PATTERN.finditer(thepage):
 			drvdate = DRV_DATE_PATTERN.search(drv.group(1))
 			if drvdate:
@@ -623,11 +625,12 @@ def findDRV(thepage, pagename):
 						pagename.replace("Articles_for_deletion/", "", 1)
 					)
 				drvs += (
-					'<a href="http://en.wikipedia.org/wiki/Wikipedia:Deletion_review/Log/{}#{}">'.format(
+					'<a href="{}{}#{}"><sup><small>[{}]</small></sup></a>'.format(
+						baseurl
 						drvdate.group(1).strip().replace(" ", "_"),
 						nametext,
+						str(drvcounter),
 					)
-					+ f"<sup><small>[{str(drvcounter)}]</small></sup></a>"
 				)
 		return drvs
 	except Exception:
@@ -721,7 +724,8 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 					"Wikipedia:" + page[0].decode().replace("_", " ") + "|"
 				)
 		u = urlopen(
-			"http://en.wikipedia.org/w/api.php"
+			WIKI_URL
+			+ "w/api.php"
 			+ "?action=query&prop=revisions|info&rvprop=content&format=xml&titles="
 			+ p[:-3]
 		)
@@ -762,8 +766,8 @@ def link(p):
 	text = html.escape(p.replace("_", " ")[22:])
 	if len(text) > 64:
 		text = text[:61] + "..."
-	return '<a href="http://en.wikipedia.org/wiki/Wikipedia:{}">{}</a>'.format(
-		urllib.parse.quote(p), text
+	return '<a href="{}wiki/Wikipedia:{}">{}</a>'.format(
+		WIKI_URL, urllib.parse.quote(p), text
 	)
 
 
