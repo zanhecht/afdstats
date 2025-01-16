@@ -185,13 +185,6 @@ def app(environ, start_response):
 			maxsearch = 200
 
 		##################Query database
-		db = pymysql.connect(
-			db="enwiki_p",
-			host="enwiki.web.db.svc.wikimedia.cloud",
-			read_default_file=os.path.expanduser("~/replica.my.cnf"),
-		)
-		cursor = db.cursor()
-
 		startdatestr = ""
 		try:
 			if (
@@ -201,15 +194,13 @@ def app(environ, start_response):
 		except Exception:
 			pass
 
-		querystr = (
-			"SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev"
+		querystr = "SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev"
 			+ " JOIN page ON rev.rev_page=page_id"
 			+ " JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor"
 			+ '{} WHERE actor.actor_name=%s AND page_namespace=4'
 			+ ' AND page_title LIKE "Articles_for_deletion%%"'
 			+ ' AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
 			+ "{} ORDER BY rev.rev_timestamp DESC;"
-		)
 		if nomsonly:
 			querystr = querystr.format(
 				"DISTINCT page_title, actor.actor_name",
@@ -226,8 +217,16 @@ def app(environ, start_response):
 					+ "ON first_actor.actor_id=first_rev.rev_actor",
 				startdatestr,
 			)
-		cursor.execute(querystr, (username,),)
-		results = cursor.fetchall()
+			
+		db = pymysql.connect(
+			database="enwiki_p",
+			host="enwiki.web.db.svc.wikimedia.cloud",
+			read_default_file=os.path.expanduser("~/replica.my.cnf"),
+		)
+		with db:
+			with db.cursor() as cursor:
+				cursor.execute(querystr, (username,),)
+				results = cursor.fetchall()
 
 		output.append(f"<h1>AfD Statistics for User:{html.escape(username)}</h1>")
 
@@ -398,7 +397,6 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 			except Exception as err:
 				# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
 				continue
-		db.close()
 		output.append("</ul>")
 		##################Print results tables
 		totalvotes = 0
