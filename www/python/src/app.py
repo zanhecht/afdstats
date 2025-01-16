@@ -202,21 +202,31 @@ def app(environ, start_response):
 			pass
 
 		querystr = (
-			"page_title FROM revision_userindex"
-			+ " JOIN page ON rev_page=page_id"
-			+ " JOIN actor_revision ON actor_id=rev_actor"
-			+ " WHERE actor_name=%s AND page_namespace=4"
+			"SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev"
+			+ " JOIN page ON rev.rev_page=page_id"
+			+ " JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor"
+			+ '{} WHERE actor.actor_name=%s AND page_namespace=4'
 			+ ' AND page_title LIKE "Articles_for_deletion%%"'
 			+ ' AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
+			+ "{} ORDER BY rev.rev_timestamp DESC;"
 		)
 		if nomsonly:
-			querystr = f"SELECT {querystr} AND rev_parent_id=0"
+			querystr = querystr.format(
+				"DISTINCT page_title, actor.actor_name",
+				"",
+				" AND rev.rev_parent_id=0" + startdatestr
+			)
 		else:
-			querystr = f"SELECT DISTINCT {querystr}"
-		cursor.execute(
-			f"{querystr}{startdatestr} ORDER BY rev_timestamp DESC;",
-			(username,),
-		)
+			querystr = querystr.format(
+				"page_title, first_actor.actor_name",
+				" JOIN revision_userindex AS first_rev "
+					+ "ON first_rev.rev_page=page_id "
+					+ "AND first_rev.rev_parent_id=0 "
+					+ "JOIN actor_revision AS first_actor "
+					+ "ON first_actor.actor_id=first_rev.rev_actor",
+				startdatestr,
+			)
+		cursor.execute(querystr, (username,),)
 		results = cursor.fetchall()
 
 		output.append(f"<h1>AfD Statistics for User:{html.escape(username)}</h1>")
