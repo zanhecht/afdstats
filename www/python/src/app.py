@@ -352,8 +352,8 @@ def app(environ, start_response):
 								(page, votetype, votetime, result, 0, deletionreviews)
 							)
 					except Exception as err:
-						# output.append("<br>ERROR: " + {str(err)} (") #debug
-						# output.append(html.escape(traceback.format_exc()) + ")") #debug
+						# output.append(f"<br>ERROR: {str(err)}<br>") #debug
+						# output.append(html.escape(traceback.format_exc())) #debug
 						continue
 				if len(dupvotes) < 1:
 					if is_nominator:  # user is nominator
@@ -380,8 +380,8 @@ def app(environ, start_response):
 					tablelist.append(dupvotes[0])
 					updatestats(stats, dupvotes[0][1], dupvotes[0][3])
 			except Exception as err:
-				# output.append("<br>ERROR: " + {str(err)} (") #debug
-				# output.append(html.escape(traceback.format_exc()) + ")") #debug
+				# output.append(f"<br>ERROR: {str(err)}<br>") #debug
+				# output.append(html.escape(traceback.format_exc())) #debug
 				continue
 		output.append("</ul>")
 		##################Print results tables
