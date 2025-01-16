@@ -321,7 +321,12 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 				def find_voter_match(vote):
 					return VOTER_MATCH_PATTERN.match(vote[find_user_idx(vote) :])
 
-				firsteditor = DBfirsteditor(page, cursor)
+				firsteditor = (
+					entry[1].decode(),
+					datetime.datetime.strptime(
+						entry[2].decode(), "%Y%m%d%H%M%S"
+					).strftime("%B %d, %Y"),
+				)
 				is_nominator = False
 				if (firsteditor[0].lower() == username.lower()) or (
 					firsteditor[0].lower() == altusername.lower()
@@ -715,28 +720,6 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 		return pagedict
 	except Exception as err:
 		return f"Unable to fetch page data. Please try again.<!--{str(err)}-->"
-
-
-def DBfirsteditor(
-	p, cursor
-):  # Finds the name of the user who created a particular page, using a database query.  Replaces APIfirsteditor()
-	try:
-		cursor.execute(
-			"SELECT actor_name, rev_timestamp FROM revision"
-			+ " JOIN page ON rev_page=page_id"
-			+ " JOIN actor_revision ON actor_id=rev_actor"
-			+ " WHERE rev_parent_id=0 AND page_title=%s AND page_namespace=4;",
-			(p.replace(" ", "_"),),
-		)
-		results = cursor.fetchall()[0]
-		return (
-			results[0].decode(),
-			datetime.datetime.strptime(results[1].decode(), "%Y%m%d%H%M%S").strftime(
-				"%B %d, %Y"
-			),
-		)
-	except Exception:
-		return None
 
 
 def datefmt(datestr):
