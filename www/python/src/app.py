@@ -180,13 +180,16 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 		novotes = 0
 
 		output.append(
-			"""<small>
-<a href="javascript:void(0);" onClick="if(document.getElementById('noVote').style.display === 'none') {document.getElementById('noVote').style.display = 'block';this.innerHTML='Hide pages without detected votes';} else {document.getElementById('noVote').style.display = 'none';this.innerHTML='Show pages without detected votes';}">
-Show pages without detected votes
-</a>
-</small>
-<ul id="noVote" style="display: none">"""
+			'<small><a href="javascript:void(0);" onClick="'
+			+ "if(document.getElementById('noVote').style.display === 'none') {"
+			+ "document.getElementById('noVote').style.display = 'block';"
+			+ "this.innerHTML='Hide pages without detected votes';"
+			+ "} else {"
+			+ "document.getElementById('noVote').style.display = 'none';"
+			+ "this.innerHTML='Show pages without detected votes';"
+			+ '}">Show pages without detected votes</a></small>'
 		)
+		output.append('<ul id="noVote" style="display: none">')
 
 		for entry in pages:
 			try:
@@ -370,8 +373,16 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			afds_output = ["<h2>Individual AFDs</h2>"]
 			if len(tablelist) > 0 and tablelist[-1][2]:
 				afds_output.append(
-					f'<a href="{APP_NAME}?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}"><small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>'
+					'<a href="{}?name={}&max={}&startdate={}&altname={}&undetermined={}">'.format(
+						APP_NAME,
+						username.replace(" ", "_"),
+						str(maxsearch),
+						datefmt(tablelist[-1][2]),
+						altusername,
+						str(undetermined),
+					)
 				)
+				afds_output.append(f"<small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>")
 			afds_output.append("</div>")
 			afds_output.append(
 				"""<table>
@@ -397,7 +408,14 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			afds_output.append("</tbody>\n</table>")
 			afds_output.append('<div style="width:875px;">')
 			afds_output.append(
-				f'<a href="{APP_NAME}?name={username.replace(" ", "_")}&max={str(maxsearch)}&startdate={datefmt(tablelist[-1][2])}&altname={altusername}&undetermined={str(undetermined)}">'
+				'<a href="{}?name={}&max={}&startdate={}&altname={}&undetermined={}">'.format(
+					APP_NAME,
+					username.replace(" ", "_"),
+					str(maxsearch),
+					datefmt(tablelist[-1][2]),
+					altusername,
+					str(undetermined),
+				)
 			)
 			afds_output.append(
 				f"<small>Next {str(maxsearch)} AFDs &rarr;</small></a><br><br>"
