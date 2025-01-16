@@ -740,11 +740,9 @@ def link(p):
 	if len(text) > 64:
 		text = text[:61] + "..."
 	return (
-		'<a href="http://en.wikipedia.org/wiki/Wikipedia:'
-		+ urllib.parse.quote(p)
-		+ '">'
-		+ text
-		+ "</a>"
+		'<a href="http://en.wikipedia.org/wiki/Wikipedia:{}">{}</a>'.format(
+			urllib.parse.quote(p), text
+		)
 	)
 
 
