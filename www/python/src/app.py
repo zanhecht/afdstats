@@ -14,10 +14,12 @@ import html
 # Constants
 APP_NAME = "afdstats.py"
 MAX_LIMIT = 500
-FOOTER = """<footer>Bugs, suggestions, questions?
-Contact the <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a>
-at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia talk:AfD stats</a>. • 
-<a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats" title="afdstats on Wikimedia GitLab">Source code</a></footer>"""
+FOOTER = "<footer>Bugs, suggestions, questions? Contact the"
++' <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a> at'
++' <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">'
++" Wikipedia talk:AfD stats</a>. • "
++'<a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats"'
++'title="afdstats on Wikimedia GitLab">Source code</a></footer>'
 
 STATS_RESULTS = ["k", "d", "sk", "sd", "m", "r", "t", "u", "nc"]
 STATS_VOTES = STATS_RESULTS[:-1]
@@ -107,14 +109,16 @@ STRIKE_PATTERN = re.compile(
 TIME_MATCH_PATTERN = re.compile("(\d{2}:\d{2}, .*?) \(UTC\)")
 TIME_PATTERN = re.compile("\d{2}:\d{2}, (\d{1,2}) ([A-Za-z]*) (\d{4})")
 VOTE_PATTERN = re.compile(
-	"'{3}?.*?'{3}?.*?(?:(?:\{\{unsigned.*?\}\})|(?:class=\"autosigned\"))?(?:\[\[[Uu]ser.*?\]\].*?\(UTC\))",
+	"'{3}?.*?'{3}?.*?(?:(?:\{\{unsigned.*?\}\})|(?:class=\"autosigned\"))?"
+	+ "(?:\[\[[Uu]ser.*?\]\].*?\(UTC\))",
 	flags=re.IGNORECASE,
 )
 VOTER_MATCH_PATTERN = re.compile(
 	"\[\[User.*?:(.*?)(?:\||(?:\]\]))", flags=re.IGNORECASE
 )
 
-# TODO: Provide link to usersearch.py that will show all AfD edits during the time period that this search covers
+# TODO: Provide link to usersearch.py that will show all
+# AfD edits during the time period that this search covers
 
 
 # uWSGI entry point
@@ -155,7 +159,9 @@ def app(environ, start_response):
 		qs = environ.get("QUERY_STRING", "")
 		form = urllib.parse.parse_qs(qs)
 		username = (
-			urllib.parse.unquote_plus(form.get("name", [""])[0]).replace("_", " ").strip()
+			urllib.parse.unquote_plus(form.get("name", [""])[0])
+			.replace("_", " ")
+			.strip()
 		)
 		if username == "":
 			return errorout(
@@ -165,16 +171,15 @@ def app(environ, start_response):
 			)
 		username = username[0].capitalize() + username[1:]
 		altusername = (
-			urllib.parse.unquote_plus(form.get("altname", [""])[0]).replace("_", " ").strip()
+			urllib.parse.unquote_plus(form.get("altname", [""])[0])
+			.replace("_", " ")
+			.strip()
 		)
 		startdate = str(form.get("startdate", [""])[0])
-		nomsonly = (
-			True if form.get("nomsonly", [""])[0].lower() in ["1", "true", "yes"] else False
-		)
+		trues = ["1", "true", "yes"]
+		nomsonly = True if form.get("nomsonly", [""])[0].lower() in trues else False
 		undetermined = (
-			True
-			if form.get("undetermined", [""])[0].lower() in ["1", "true", "yes"]
-			else False
+			True if form.get("undetermined", [""])[0].lower() in trues else False
 		)
 		if undetermined is True:
 			votetypes.append("UNDETERMINED")
@@ -188,36 +193,38 @@ def app(environ, start_response):
 		startdatestr = ""
 		try:
 			if (
-				len(startdate) == 8 and int(startdate) > 20000000 and int(startdate) < 20300000
+				len(startdate) == 8
+				and int(startdate) > 20000000
+				and int(startdate) < 20300000
 			):
 				startdatestr = " AND rev_timestamp<=" + startdate + "235959"
 		except Exception:
 			pass
 
 		querystr = "SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev"
-			+ " JOIN page ON rev.rev_page=page_id"
-			+ " JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor"
-			+ '{} WHERE actor.actor_name=%s AND page_namespace=4'
-			+ ' AND page_title LIKE "Articles_for_deletion%%"'
-			+ ' AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
-			+ "{} ORDER BY rev.rev_timestamp DESC;"
+		+" JOIN page ON rev.rev_page=page_id"
+		+" JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor"
+		+"{} WHERE actor.actor_name=%s AND page_namespace=4"
+		+' AND page_title LIKE "Articles_for_deletion%%"'
+		+' AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
+		+"{} ORDER BY rev.rev_timestamp DESC;"
 		if nomsonly:
 			querystr = querystr.format(
 				"DISTINCT page_title, actor.actor_name",
 				"",
-				" AND rev.rev_parent_id=0" + startdatestr
+				" AND rev.rev_parent_id=0" + startdatestr,
 			)
 		else:
 			querystr = querystr.format(
 				"page_title, first_actor.actor_name",
 				" JOIN revision_userindex AS first_rev "
-					+ "ON first_rev.rev_page=page_id "
-					+ "AND first_rev.rev_parent_id=0 "
-					+ "JOIN actor_revision AS first_actor "
-					+ "ON first_actor.actor_id=first_rev.rev_actor",
+				+ "ON first_rev.rev_page=page_id "
+				+ "AND first_rev.rev_parent_id=0 "
+				+ "JOIN actor_revision AS first_actor "
+				+ "ON first_actor.actor_id=first_rev.rev_actor",
 				startdatestr,
 			)
-			
+
 		db = pymysql.connect(
 			database="enwiki_p",
 			host="enwiki.web.db.svc.wikimedia.cloud",
@@ -225,7 +232,10 @@ def app(environ, start_response):
 		)
 		with db:
 			with db.cursor() as cursor:
-				cursor.execute(querystr, (username,),)
+				cursor.execute(
+					querystr,
+					(username,),
+				)
 				results = cursor.fetchall()
 
 		output.append(f"<h1>AfD Statistics for User:{html.escape(username)}</h1>")
@@ -234,30 +244,34 @@ def app(environ, start_response):
 			return errorout(
 				start_response,
 				output,
-				"""No AfDs found. This user may not exist.
-Note that if the user's username does not appear in the wikitext of their signature,
-you may need to specify an alternate name.""",
+				"No AfDs found. This user may not exist. Note that if the user's"
+				+ " username does not appear in the wikitext of their signature,"
+				+ " you may need to specify an alternate name.",
 			)
 
 		output.append(
-			"""<p>These statistics were compiled by an automated process,
-and may contain errors or omissions due to the wide variety of styles with which people cast votes at AfD.
-Any result fields which contain "UNDETERMINED" were not able to be parsed, and should be examined manually.</p>
-<h2>Vote totals</h2>"""
+			"<p>These statistics were compiled by an automated process, and may"
+			+ " contain errors or omissions due to the wide variety of styles with"
+			+ " which people cast votes at AfD. Any result fields which contain"
+			+ ' "UNDETERMINED" were not able to be parsed, and should be examined'
+			+ " manually.</p>"
+		)
+		output.append("<h2>Vote totals</h2>")
+
+		startdatestr = ""
+		if startdate:
+			datestr = datetime.datetime.strptime(startdate, "%Y%m%d")
+			startdatestr = f" (from {datestr.strftime('%b %d %Y')} and earlier)"
+		output.append(
+			"Total number of unique AfD pages edited by {}{}: {}<br>".format(
+				username, startdatestr, str(len(results))
+			)
 		)
 
-		if startdate:
-			datestr = datetime.datetime.strptime(startdate, "%Y%m%d").strftime("%b %d %Y")
-			output.append(
-				f"Total number of unique AfD pages edited by {username} (from {datestr} and earlier): {str(len(results))}<br>"
-			)
-		else:
-			output.append(
-				f"Total number of unique AfD pages edited by {username}: {str(len(results))}<br>"
-			)
-
 		if len(results) > maxsearch:
-			output.append(f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>")
+			output.append(
+				f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>"
+			)
 
 		##################Analyze results
 		pages = results[: min(maxsearch, len(results))]
@@ -349,12 +363,13 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 						]:
 							output.append(f"<pre>{page}, {voter}, {vote}</pre>")
 
-						# Underscores are turned into spaces by MediaWiki title processing
+						# Underscores are turned into spaces by MediaWiki
 						voter = voter.replace("_", " ")
 
-						# Check if the vote was made by the user we're counting votes for
+						# Check if vote was made by the user we're counting votes for
 						if (
-							voter.lower() == username.lower() or voter.lower() == altusername.lower()
+							voter.lower() == username.lower()
+							or voter.lower() == altusername.lower()
 						):
 							votetype = parsevote(vote[3 : vote.find("'", 3)])
 							if votetype is None:
@@ -368,9 +383,12 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 								votetime = ""
 							else:
 								votetime = parsetime(timematch.group(1))
-							dupvotes.append((page, votetype, votetime, result, 0, deletionreviews))
+							dupvotes.append(
+								(page, votetype, votetime, result, 0, deletionreviews)
+							)
 					except Exception as err:
-						# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
+						# output.append("<br>ERROR: " + {str(err)} (") #debug
+						# output.append(html.escape(traceback.format_exc()) + ")") #debug
 						continue
 				if len(dupvotes) < 1:
 					if is_nominator:  # user is nominator
@@ -384,7 +402,9 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 							closermatch = f" (closer: {closermatch.group(1).strip()})"
 
 						output.append(
-							f"<li><a href = 'https://en.wikipedia.org/wiki/Wikipedia:{urllib.parse.quote(page)}'>{page}</a>{closermatch}</li>"
+							"<li><a href = 'https://en.wikipedia.org/wiki/Wikipedia:{}'>{}</a>{}</li>".format(
+								urllib.parse.quote(page), page, closermatch
+							)
 						)
 						novotes += 1
 				elif len(dupvotes) > 1:
@@ -395,7 +415,8 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 					tablelist.append(dupvotes[0])
 					updatestats(stats, dupvotes[0][1], dupvotes[0][3])
 			except Exception as err:
-				# output.append(f"<br>ERROR: {str(err)} ({html.escape(traceback.format_exc())})") #debug
+				# output.append("<br>ERROR: " + {str(err)} (") #debug
+				# output.append(html.escape(traceback.format_exc()) + ")") #debug
 				continue
 		output.append("</ul>")
 		##################Print results tables
@@ -406,7 +427,9 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 			output.append("<ul>")
 			for i in votetypes:
 				output.append(
-					f"<li>{i} votes: {str(stats[i])} ({str(round((100.0 * stats[i]) / totalvotes, 1))}%)</li>"
+					"<li>{} votes: {} ({}%)</li>".format(
+						i, str(stats[i]), str(round((100.0 * stats[i]) / totalvotes, 1))
+					)
 				)
 			output.append("</ul>")
 			if novotes:
@@ -438,7 +461,9 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			for vv in STATS_VOTES:
 				output.append(f"<tr>\n<th>{vv.upper()}</th>")
 				for rr in STATS_RESULTS:
-					output.append(matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>")
+					output.append(
+						matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>"
+					)
 				output.append("</tr>")
 			output.append(
 				"""</tbody>
@@ -490,9 +515,9 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 
 			for i in tablelist:
 				afds_output.append("<tr>")
-				afds_output.append(
-					f"<td>{link(i[0])}</td>\n<td>{i[2]}</td>\n<td>{i[1]}{' (Nom)' if i[4] == 1 else ''}</td>"
-				)
+				afds_output.append(f"<td>{link(i[0])}</td>")
+				afds_output.append(f"<td>{i[2]}</td>")
+				afds_output.append(f"<td>{i[1]}{' (Nom)' if i[4] == 1 else ''}</td>")
 				matchcell = match(matchstats, i[1], i[3], i[5])
 				afds_output.append(matchcell)
 				afds_output.append("</tr>")
@@ -503,24 +528,23 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 
 			total_votes = sum(matchstats)
 			if total_votes > 0:
-				output.append(
-					"Number of AfDs where vote matched result (green cells): {} ({:.1%})<br>".format(
-						matchstats[0], float(matchstats[0]) / total_votes
+				matchstrs = [
+					"vote matched result (green cells)",
+					"vote didn't match result (red cells)",
+					'result was "No Consensus" (yellow cells)',
+				]
+				for i in range(3):
+					output.append(
+						"Number of AfDs where {}: {} ({:.1%})<br>".format(
+							matchstrs[i],
+							matchstats[i],
+							float(matchstats[i]) / total_votes,
+						)
 					)
-				)
-				output.append(
-					"Number of AfDs where vote didn't match result (red cells): {} ({:.1%})<br>".format(
-						matchstats[1], float(matchstats[1]) / total_votes
-					)
-				)
-				output.append(
-					'Number of AfD\'s where result was "No Consensus" (yellow cells): {} ({:.1%})<br>\n'.format(
-						matchstats[2], float(matchstats[2]) / total_votes
-					)
-				)
 				if total_votes != matchstats[2]:
 					output.append(
-						'Without considering "No Consensus" results, <b>{:.1%} of AfDs were matches</b> and {:.1%} of AfDs were not.'.format(
+						'Without considering "No Consensus" results, <b>'
+						+ "{:.1%} of AfDs were matches</b> and {:.1%} were not.".format(
 							float(matchstats[0]) / (total_votes - matchstats[2]),
 							float(matchstats[1]) / (total_votes - matchstats[2]),
 						)
@@ -532,12 +556,8 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 		elapsed = str(round(time.time() - starttime, 2))
 		output.append(f"<small>Elapsed time: {elapsed} seconds.</small><br>")
 		output.append(FOOTER)
-		output.append(
-			"""<a href="/"><small>&larr;New search</small></a>
-</div>
-</body>
-</html>"""
-		)
+		output.append('<a href="/"><small>&larr;New search</small></a>')
+		output.append("</div>\n</body>\n</html>")
 		start_response("200 OK", [("Content-Type", "text/html")])
 		return ["\n".join(output).encode("utf-8")]
 
@@ -547,7 +567,9 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 		return errorout(
 			start_response,
 			output,
-			f"{html.escape(str(err))}<br>{html.escape(traceback.format_exc())}<br>Fatal error.",
+			"{}<br>{}<br>Fatal error.".format(
+				html.escape(str(err)), html.escape(traceback.format_exc())
+			),
 		)
 
 
@@ -584,9 +606,8 @@ def findresults(thepage):  # Parse through the text of an AfD to find how it was
 	return "UNDETERMINED"
 
 
-def findDRV(
-	thepage, pagename
-):  # Try to find evidence of a DRV that was opened on this AfD
+def findDRV(thepage, pagename):
+	# Try to find evidence of a DRV that was opened on this AfD
 	try:
 		drvs = ""
 		drvcounter = 0
@@ -651,9 +672,8 @@ def match(matchstats, v, r, drv):  # Update the matchstats variable
 	return f'<td class="{c}">{r}{drv}</td>'
 
 
-def matrixmatch(
-	stats, v, r
-):  # Returns html to color the cell of the matrix table correctly,
+def matrixmatch(stats, v, r):
+	# Returns html to color the cell of the matrix table correctly,
 	# depending on whether there is a match/non-match (red/green),
 	# or if the cell is zero/non-zero (bright/dull).
 	if stats[v + r]:
@@ -697,9 +717,12 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 		p = ""
 		for page in rawpagelist:
 			if page[0]:
-				p += urllib.parse.quote("Wikipedia:" + page[0].decode().replace("_", " ") + "|")
+				p += urllib.parse.quote(
+					"Wikipedia:" + page[0].decode().replace("_", " ") + "|"
+				)
 		u = urlopen(
-			"http://en.wikipedia.org/w/api.php?action=query&prop=revisions|info&rvprop=content&format=xml&titles="
+			"http://en.wikipedia.org/w/api.php"
+			+ "?action=query&prop=revisions|info&rvprop=content&format=xml&titles="
 			+ p[:-3]
 		)
 		xml = u.read()
@@ -739,18 +762,16 @@ def link(p):
 	text = html.escape(p.replace("_", " ")[22:])
 	if len(text) > 64:
 		text = text[:61] + "..."
-	return (
-		'<a href="http://en.wikipedia.org/wiki/Wikipedia:{}">{}</a>'.format(
-			urllib.parse.quote(p), text
-		)
+	return '<a href="http://en.wikipedia.org/wiki/Wikipedia:{}">{}</a>'.format(
+		urllib.parse.quote(p), text
 	)
 
 
-def errorout(
-	start_response, output, errorstr
-):  # General error handler, prints error message and aborts execution.
+def errorout(start_response, output, errorstr):
+	# General error handler, prints error message and aborts execution.
 	output.append(
-		f"<p>ERROR: {errorstr}</p><p>Please <a href='http://afdstats.toolforge.org/'>try again</a>.</p>"
+		f"<p>ERROR: {errorstr}</p>"
+		+ "<p>Please <a href='http://afdstats.toolforge.org/'>try again</a>.</p>"
 	)
 	output.append(FOOTER)
 	output.append("</div>\n</body>\n</html>")
