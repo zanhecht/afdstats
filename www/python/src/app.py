@@ -68,32 +68,36 @@ def app(environ, start_response):
 		starttime = time.time()
 
 		##################Validate input
-		# form = cgi.FieldStorage()
-		form = urllib.parse.parse_qs(environ.get("QUERY_STRING", ""))
-		username = urllib.parse.unquote_plus(form.get("name", "")).replace("_", " ").strip()
+		qs = environ.get("QUERY_STRING", "")
+		form = urllib.parse.parse_qs(qs)
+		username = (
+			urllib.parse.unquote_plus(form.get("name", [""])[0]).replace("_", " ").strip()
+		)
 		if username == "":
 			return errorout(
 				start_response,
 				output,
-				f"No username entered.<!--{environ.get('QUERY_STRING', '')}-->",
+				f"No username entered.<!--{qs}-->",
 			)
 		username = username[0].capitalize() + username[1:]
 		altusername = (
-			urllib.parse.unquote_plus(form.get("altname", "")).replace("_", " ").strip()
+			urllib.parse.unquote_plus(form.get("altname", [""])[0]).replace("_", " ").strip()
 		)
-		startdate = str(form.get("startdate", ""))
+		startdate = str(form.get("startdate", [""])[0])
 		nomsonly = (
-			True if form.get("nomsonly", "").lower() in ["1", "true", "yes"] else False
+			True if form.get("nomsonly", [""])[0].lower() in ["1", "true", "yes"] else False
 		)
 		undetermined = (
-			True if form.get("undetermined", "").lower() in ["1", "true", "yes"] else False
+			True
+			if form.get("undetermined", [""])[0].lower() in ["1", "true", "yes"]
+			else False
 		)
 		if undetermined is True:
 			votetypes.append("UNDETERMINED")
 			stats["UNDETERMINED"] = 0
 		try:
 			maxsearch = min(MAX_LIMIT, int(form["max"][0]))
-		except (NameError, KeyError, TypeError, ValueError):
+		except Exception:
 			maxsearch = 200
 
 		##################Query database
@@ -110,7 +114,7 @@ def app(environ, start_response):
 				len(startdate) == 8 and int(startdate) > 20000000 and int(startdate) < 20300000
 			):
 				startdatestr = " AND rev_timestamp<=" + startdate + "235959"
-		except (NameError, TypeError, ValueError):
+		except Exception:
 			pass
 
 		querystr = (
@@ -137,7 +141,7 @@ def app(environ, start_response):
 			return errorout(
 				start_response,
 				output,
-				"""No AFDs found. This user may not exist.
+				"""No AfDs found. This user may not exist.
 Note that if the user's username does not appear in the wikitext of their signature,
 you may need to specify an alternate name.""",
 			)
@@ -329,7 +333,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 				"""<br>
 <h2>Voting matrix</h2>
 <p>This table compares the user's votes to the way the AfD eventually closed.
-The only AFDs included in this matrix are those that have already closed,
+The only AfDs included in this matrix are those that have already closed,
 where both the vote and result could be reliably determined.
 Results are across the top, and the user's votes down the side.
 Green cells indicate "matches", meaning that the user's vote matched
@@ -370,9 +374,9 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 <div style="width:875px;">"""
 			)
 
-			afds_output = ["<h2>Individual AFDs</h2>"]
+			nextlink = ""
 			if len(tablelist) > 0 and tablelist[-1][2]:
-				afds_output.append(
+				nextlink = (
 					'<a href="{}?name={}&max={}&startdate={}&altname={}&undetermined={}">'.format(
 						APP_NAME,
 						username.replace(" ", "_"),
@@ -381,8 +385,11 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 						altusername,
 						str(undetermined),
 					)
+					+ f"<small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>"
 				)
-				afds_output.append(f"<small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>")
+
+			afds_output = ["<h2>Individual AfDs</h2>"]
+			afds_output.append(nextlink)
 			afds_output.append("</div>")
 			afds_output.append(
 				"""<table>
@@ -407,29 +414,18 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 				afds_output.append("</tr>")
 			afds_output.append("</tbody>\n</table>")
 			afds_output.append('<div style="width:875px;">')
-			afds_output.append(
-				'<a href="{}?name={}&max={}&startdate={}&altname={}&undetermined={}">'.format(
-					APP_NAME,
-					username.replace(" ", "_"),
-					str(maxsearch),
-					datefmt(tablelist[-1][2]),
-					altusername,
-					str(undetermined),
-				)
-			)
-			afds_output.append(
-				f"<small>Next {str(maxsearch)} AFDs &rarr;</small></a><br><br>"
-			)
+			afds_output.append(nextlink)
+			afds_output.append("<br>")
 
 			total_votes = sum(matchstats)
 			if total_votes > 0:
 				output.append(
-					"Number of AFDs where vote matched result (green cells): {} ({:.1%})<br>".format(
+					"Number of AfDs where vote matched result (green cells): {} ({:.1%})<br>".format(
 						matchstats[0], float(matchstats[0]) / total_votes
 					)
 				)
 				output.append(
-					"Number of AFDs where vote didn't match result (red cells): {} ({:.1%})<br>".format(
+					"Number of AfDs where vote didn't match result (red cells): {} ({:.1%})<br>".format(
 						matchstats[1], float(matchstats[1]) / total_votes
 					)
 				)
@@ -440,7 +436,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 				)
 				if total_votes != matchstats[2]:
 					output.append(
-						'Without considering "No Consensus" results, <b>{:.1%} of AFDs were matches</b> and {:.1%} of AFDs were not.'.format(
+						'Without considering "No Consensus" results, <b>{:.1%} of AfDs were matches</b> and {:.1%} of AfDs were not.'.format(
 							float(matchstats[0]) / (total_votes - matchstats[2]),
 							float(matchstats[1]) / (total_votes - matchstats[2]),
 						)
@@ -749,7 +745,7 @@ def matrixmatch(
 			return '<td class="nnn">'
 
 
-def APIpagedata(rawpagelist):  # Grabs page text for all of the AFDs using the API
+def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the API
 	try:
 		p = ""
 		for page in rawpagelist:
