@@ -624,13 +624,11 @@ def findDRV(thepage, pagename):
 					nametext = urllib.parse.quote(
 						pagename.replace("Articles_for_deletion/", "", 1)
 					)
-				drvs += (
-					'<a href="{}{}#{}"><sup><small>[{}]</small></sup></a>'.format(
-						baseurl
-						drvdate.group(1).strip().replace(" ", "_"),
-						nametext,
-						str(drvcounter),
-					)
+				drvs += '<a href="{}{}#{}"><sup><small>[{}]</small></sup></a>'.format(
+					baseurl,
+					drvdate.group(1).strip().replace(" ", "_"),
+					nametext,
+					str(drvcounter),
 				)
 		return drvs
 	except Exception:
