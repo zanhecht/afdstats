@@ -589,13 +589,11 @@ def findDRV(
 						pagename.replace("Articles_for_deletion/", "", 1)
 					)
 				drvs += (
-					'<a href="http://en.wikipedia.org/wiki/Wikipedia:Deletion_review/Log/'
-					+ drvdate.group(1).strip().replace(" ", "_")
-					+ "#"
-					+ nametext
-					+ '"><sup><small>['
-					+ str(drvcounter)
-					+ "]</small></sup></a>"
+					'<a href="http://en.wikipedia.org/wiki/Wikipedia:Deletion_review/Log/{}#{}">'.format(
+						drvdate.group(1).strip().replace(" ", "_"),
+						nametext,
+					)
+					+ f"<sup><small>[{str(drvcounter)}]</small></sup></a>"
 				)
 		return drvs
 	except Exception:
