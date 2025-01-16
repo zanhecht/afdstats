@@ -14,9 +14,14 @@ import html
 # Constants
 APP_NAME = "afdstats.py"
 MAX_LIMIT = 500
+FOOTER = """<footer>Bugs, suggestions, questions?
+Contact the <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a>
+at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia talk:AfD stats</a>. • 
+<a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats" title="afdstats on Wikimedia GitLab">Source code</a></footer>"""
+
 STATS_RESULTS = ["k", "d", "sk", "sd", "m", "r", "t", "u", "nc"]
 STATS_VOTES = STATS_RESULTS[:-1]
-VOTE_TYPES = [
+RESULT_TYPES = [
 	"Keep",
 	"Delete",
 	"Speedy Keep",
@@ -25,15 +30,94 @@ VOTE_TYPES = [
 	"Redirect",
 	"Transwiki",
 	"Userfy",
+	"No Consensus",
 ]
-FOOTER = """<footer>Bugs, suggestions, questions?
-Contact the <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a>
-at <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia talk:AfD stats</a>. • 
-<a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats" title="afdstats on Wikimedia GitLab">Source code</a></footer>"""
+VOTE_TYPES = RESULT_TYPES[:-1]
+VOTE_MAP = {
+	"comment": None,
+	"note": None,
+	"merge": "Merge",
+	"redirect": "Redirect",
+	"speedy keep": "Speedy Keep",
+	"speedy delet": "Speedy Delete",
+	"keep": "Keep",
+	"delete": "Delete",
+	"transwiki": "Transwiki",
+	"userf": "Userfy",
+	"incubat": "Userfy",
+	"draftif": "Userfy",
+	# "withdraw": "Speedy Keep"
+}
+RESULT_MAP = {
+	"no consensus": "No Consensus",
+	"merge": "Merge",
+	"redirect": "Redirect",
+	"speedy keep": "Speedy Keep",
+	"speedily keep": "Speedy Keep",
+	"speedyily kept": "Speedy Keep",
+	"snow keep": "Speedy Keep",
+	"snowball keep": "Speedy Keep",
+	"speedy close": "Speedy Keep",
+	"speedy delet": "Speedy Delete",
+	"speedily delet": "Speedy Delete",
+	"snow delet": "Speedy Delete",
+	"snowball delet": "Speedy Delete",
+	"keep": "Keep",
+	"delete": "Delete",
+	"transwiki": "Transwiki",
+	"userf": "Userfy",
+	"incubat": "Userfy",
+	"draftif": "Userfy",
+	"withdraw": "Speedy Keep",
+}
+MONTH_MAP = {
+	"01": "January",
+	"02": "February",
+	"03": "March",
+	"04": "April",
+	"05": "May",
+	"06": "June",
+	"07": "July",
+	"08": "August",
+	"09": "September",
+	"10": "October",
+	"11": "November",
+	"12": "December",
+}
+
+DATE_TG_PATTERN = re.compile("([A-Za-z]*) (\d{1,2}), (\d{4})")
+DRV_PATTERN = re.compile(
+	"(?:(?:\{\{delrev xfd)|(?:\{\{delrevafd)|(?:\{\{delrevxfd))(.*?)\}\}",
+	flags=re.IGNORECASE,
+)
+DRV_DATE_PATTERN = re.compile("\|date=(\d{4} \w*? \d{1,2})", flags=re.IGNORECASE)
+DRV_NAME_PATTERN = re.compile("\|page=(.*?)(?:\||$)", flags=re.IGNORECASE)
+PAGE_LIST_PATTERN = re.compile(r"<page.*?>.*?</page>", re.DOTALL)
+PAGE_NAME_PATTERN = re.compile(r"<page.*?title=\"(.*?)\"")
+PAGE_TEXT_PATTERN = re.compile(r'<rev.*?xml:space="preserve">(.*?)</rev>', re.DOTALL)
+PAGE_REDIRECT_PATTERN = re.compile('<page.*?redirect="".*?>')
+RESULT_PATTERN = re.compile(
+	"The result (?:of the debate )?was(?:.*?\n?.*?)(?:'{3}?)(.*?)(?:'{3}?)",
+	flags=re.IGNORECASE,
+)
+STRIKE_PATTERN = re.compile(
+	"<(s|strike|del)>.*?</(s|strike|del)>",
+	flags=re.IGNORECASE | re.DOTALL,
+)
+TIME_MATCH_PATTERN = re.compile("(\d{2}:\d{2}, .*?) \(UTC\)")
+TIME_PATTERN = re.compile("\d{2}:\d{2}, (\d{1,2}) ([A-Za-z]*) (\d{4})")
+VOTE_PATTERN = re.compile(
+	"'{3}?.*?'{3}?.*?(?:(?:\{\{unsigned.*?\}\})|(?:class=\"autosigned\"))?(?:\[\[[Uu]ser.*?\]\].*?\(UTC\))",
+	flags=re.IGNORECASE,
+)
+VOTER_MATCH_PATTERN = re.compile(
+	"\[\[User.*?:(.*?)(?:\||(?:\]\]))", flags=re.IGNORECASE
+)
 
 # TODO: Provide link to usersearch.py that will show all AfD edits during the time period that this search covers
 
 
+# uWSGI entry point
 def app(environ, start_response):
 	# Produce 404 error if not accessed at APP_NAME
 	if environ.get("PATH_INFO", "/").lstrip("/") != APP_NAME:
@@ -202,12 +286,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 				# "data" means the full page text
 				raw_data = alldata["Wikipedia:" + page.replace("_", " ")]
 				data = html.unescape(raw_data.replace("\n", "\\n")).replace("\\n", "\n")
-				data = re.sub(
-					"<(s|strike|del)>.*?</(s|strike|del)>",
-					"",
-					data,
-					flags=re.IGNORECASE | re.DOTALL,
-				)
+				data = STRIKE_PATTERN.sub("", data)
 
 				# We don't want to include the closing statement while finding votes
 				header_index = data.find("==")
@@ -215,11 +294,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 					votes_data = data[header_index:]
 				else:
 					votes_data = data
-				votes = re.findall(
-					"'{3}?.*?'{3}?.*?(?:(?:\{\{unsigned.*?\}\})|(?:class=\"autosigned\"))?(?:\[\[[Uu]ser.*?\]\].*?\(UTC\))",
-					votes_data,
-					flags=re.IGNORECASE,
-				)
+				votes = VOTE_PATTERN.findall(votes_data)
 				result_data = data[: max(header_index, data.find("(UTC)"))]
 				result = findresults(result_data)
 				dupvotes = []
@@ -234,11 +309,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 					)
 
 				def find_voter_match(vote):
-					return re.match(
-						"\[\[User.*?:(.*?)(?:\||(?:\]\]))",
-						vote[find_user_idx(vote) :],
-						flags=re.IGNORECASE,
-					)
+					return VOTER_MATCH_PATTERN.match(vote[find_user_idx(vote) :])
 
 				firsteditor = DBfirsteditor(page, cursor)
 				is_nominator = False
@@ -278,7 +349,7 @@ Any result fields which contain "UNDETERMINED" were not able to be parsed, and s
 								(undetermined is False) or (is_nominator is True)
 							):
 								continue
-							timematch = re.search("(\d{2}:\d{2}, .*?) \(UTC\)", vote)
+							timematch = TIME_MATCH_PATTERN.search(vote)
 							if timematch is None:
 								votetime = ""
 							else:
@@ -443,7 +514,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 					)
 			output.append("\n".join(afds_output))
 		else:
-			output.append("<br><br>No votes found.")
+			output.append(f"<br><br>No votes found.<!--{str(stats)}-->")
 
 		elapsed = str(round(time.time() - starttime, 2))
 		output.append(f"<small>Elapsed time: {elapsed} seconds.</small><br>")
@@ -468,41 +539,14 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 
 
 def parsevote(v):
-	v = v.lower()
-	if "comment" in v:
-		return None
-	elif "note" in v:
-		return None
-	elif "merge" in v:
-		return "Merge"
-	elif "redirect" in v:
-		return "Redirect"
-	elif "speedy keep" in v:
-		return "Speedy Keep"
-	elif "speedy delet" in v:
-		return "Speedy Delete"
-	elif "keep" in v:
-		return "Keep"
-	elif "delete" in v:
-		return "Delete"
-	elif "transwiki" in v:
-		return "Transwiki"
-	elif (
-		("userfy" in v)
-		or ("userfi" in v)
-		or ("incubat" in v)
-		or ("draftify" in v)
-		or ("draftifi" in v)
-	):
-		return "Userfy"
-	# elif ("withdraw" in v):
-	# return "Speedy Keep"
-	else:
-		return "UNDETERMINED"
+	for key, vote in VOTE_MAP.items():
+		if key in v.lower():
+			return vote
+	return "UNDETERMINED"
 
 
 def parsetime(t):
-	tm = re.search("\d{2}:\d{2}, (\d{1,2}) ([A-Za-z]*) (\d{4})", t)
+	tm = TIME_PATTERN.search(t)
 	if tm is None:
 		return ""
 	else:
@@ -510,11 +554,7 @@ def parsetime(t):
 
 
 def findresults(thepage):  # Parse through the text of an AfD to find how it was closed
-	resultsearch = re.search(
-		"The result (?:of the debate )?was(?:.*?\n?.*?)(?:'{3}?)(.*?)(?:'{3}?)",
-		thepage,
-		flags=re.IGNORECASE,
-	)
+	resultsearch = RESULT_PATTERN.search(thepage)
 	if resultsearch is None:
 		if (
 			"The following discussion is an archived debate of the proposed deletion of the article below"
@@ -524,50 +564,11 @@ def findresults(thepage):  # Parse through the text of an AfD to find how it was
 			or "'''This page is no longer live.'''" in thepage
 		):
 			return "UNDETERMINED"
-		else:
-			return "Not closed yet"
-	else:
-		result = resultsearch.group(1).lower()
-		if "no consensus" in result:
-			return "No Consensus"
-		elif "merge" in result:
-			return "Merge"
-		elif "redirect" in result:
-			return "Redirect"
-		elif (
-			("speedy keep" in result)
-			or ("speedily kept" in result)
-			or ("speedily keep" in result)
-			or ("snow keep" in result)
-			or ("snowball keep" in result)
-			or ("speedy close" in result)
-		):
-			return "Speedy Keep"
-		elif (
-			"speedy delet" in result
-			or "speedily deleted" in result
-			or "snow delete" in result
-			or "snowball delete" in result
-		):
-			return "Speedy Delete"
-		elif "keep" in result:
-			return "Keep"
-		elif "delete" in result:
-			return "Delete"
-		elif "transwiki" in result:
-			return "Transwiki"
-		elif (
-			("userfy" in result)
-			or ("userfi" in result)
-			or ("incubat" in result)
-			or ("draftify" in result)
-			or ("draftifi" in result)
-		):
-			return "Userfy"
-		elif "withdraw" in result:
-			return "Speedy Keep"
-		else:
-			return "UNDETERMINED"
+		return "Not closed yet"
+	for key, result in RESULT_MAP.items():
+		if key in resultsearch.group(1).lower():
+			return result
+	return "UNDETERMINED"
 
 
 def findDRV(
@@ -576,17 +577,11 @@ def findDRV(
 	try:
 		drvs = ""
 		drvcounter = 0
-		for drv in re.finditer(
-			"(?:(?:\{\{delrev xfd)|(?:\{\{delrevafd)|(?:\{\{delrevxfd))(.*?)\}\}",
-			thepage,
-			flags=re.IGNORECASE,
-		):
-			drvdate = re.search(
-				"\|date=(\d{4} \w*? \d{1,2})", drv.group(1), flags=re.IGNORECASE
-			)
+		for drv in DRV_PATTERN.finditer(thepage):
+			drvdate = DRV_DATE_PATTERN.search(drv.group(1))
 			if drvdate:
 				drvcounter += 1
-				name = re.search("\|page=(.*?)(?:\||$)", drv.group(1), flags=re.IGNORECASE)
+				name = DRV_NAME_PATTERN.search(drv.group(1))
 				if name:
 					nametext = urllib.parse.quote(name.group(1))
 				else:
@@ -608,88 +603,41 @@ def findDRV(
 
 
 def updatestats(stats, v, r):  # Update the stats variable for votes
-	if v == "Merge":
-		vv = "m"
-	elif v == "Redirect":
-		vv = "r"
-	elif v == "Speedy Keep":
-		vv = "sk"
-	elif v == "Speedy Delete":
-		vv = "sd"
-	elif v == "Keep":
-		vv = "k"
-	elif v == "Delete":
-		vv = "d"
-	elif v == "Transwiki":
-		vv = "t"
-	elif v == "Userfy":
-		vv = "u"
+	if v in VOTE_TYPES:
+		vv = STATS_VOTES[VOTE_TYPES.index(v)]
 	else:
 		if ("UNDETERMINED" in stats) and (v == "UNDETERMINED"):
 			stats["UNDETERMINED"] += 1
 		return
 	stats[v] += 1
-	if r == "Merge":
-		rr = "m"
-	elif r == "Redirect":
-		rr = "r"
-	elif r == "Speedy Keep":
-		rr = "sk"
-	elif r == "Speedy Delete":
-		rr = "sd"
-	elif r == "Keep":
-		rr = "k"
-	elif r == "Delete":
-		rr = "d"
-	elif r == "Transwiki":
-		rr = "t"
-	elif r == "Userfy":
-		rr = "u"
-	elif r == "No Consensus":
-		rr = "nc"
+	if r in RESULT_TYPES:
+		rr = STATS_RESULTS[RESULT_TYPES.index(r)]
 	else:
 		return
 	stats[vv + rr] += 1
 
 
 def match(matchstats, v, r, drv):  # Update the matchstats variable
-	if r == "Not closed yet":
-		return f'<td class="m">{r}{drv}</td>'
-	elif r == "UNDETERMINED" or v == "UNDETERMINED":
-		return f'<td class="m">{r}{drv}</td>'
-	elif r == "No Consensus":
+	c = "m"
+	if r == "No Consensus":
 		matchstats[2] += 1
-		return f'<td class="m">{r}{drv}</td>'
-	elif v == r:
+	elif (
+		v == r
+		or (v == "Speedy Keep" and r == "Keep")
+		or (r == "Speedy Keep" and v == "Keep")
+		or (v == "Speedy Delete" and r == "Delete")
+		or (r == "Speedy Delete" and v == "Delete")
+		or (r == "Redirect" and v == "Delete")
+		or (r == "Delete" and v == "Redirect")
+		or (r == "Merge" and v == "Redirect")
+		or (r == "Redirect" and v == "Merge")
+	):
 		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif v == "Speedy Keep" and r == "Keep":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif r == "Speedy Keep" and v == "Keep":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif v == "Speedy Delete" and r == "Delete":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif r == "Speedy Delete" and v == "Delete":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif r == "Redirect" and v == "Delete":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif r == "Delete" and v == "Redirect":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif r == "Merge" and v == "Redirect":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	elif r == "Redirect" and v == "Merge":
-		matchstats[0] += 1
-		return f'<td class="y">{r}{drv}</td>'
-	else:
+		c = "y"
+	elif r != "Not closed yet" and r != "UNDETERMINED" and v != "UNDETERMINED":
 		matchstats[1] += 1
-		return f'<td class="n">{r}{drv}</td>'
+		c = "n"
+	return f'<td class="{c}">{r}{drv}</td>'
 
 
 def matrixmatch(
@@ -700,46 +648,34 @@ def matrixmatch(
 	if stats[v + r]:
 		if r == "nc":
 			return '<td class="mm">'
-		elif v == r:
-			return '<td class="yy">'
-		elif v == "sk" and r == "k":
-			return '<td class="yy">'
-		elif v == "k" and r == "sk":
-			return '<td class="yy">'
-		elif v == "d" and r == "sd":
-			return '<td class="yy">'
-		elif v == "sd" and r == "d":
-			return '<td class="yy">'
-		elif v == "d" and r == "r":
-			return '<td class="yy">'
-		elif v == "r" and r == "d":
-			return '<td class="yy">'
-		elif v == "m" and r == "r":
-			return '<td class="yy">'
-		elif v == "r" and r == "m":
+		elif (
+			v == r
+			or (v == "sk" and r == "k")
+			or (v == "k" and r == "sk")
+			or (v == "d" and r == "sd")
+			or (v == "sd" and r == "d")
+			or (v == "d" and r == "r")
+			or (v == "r" and r == "d")
+			or (v == "m" and r == "r")
+			or (v == "r" and r == "m")
+		):
 			return '<td class="yy">'
 		else:
 			return '<td class="nn">'
 	else:
 		if r == "nc":
 			return '<td class="mmm">'
-		elif v == r:
-			return '<td class="yyy">'
-		elif v == "sk" and r == "k":
-			return '<td class="yyy">'
-		elif v == "k" and r == "sk":
-			return '<td class="yyy">'
-		elif v == "d" and r == "sd":
-			return '<td class="yyy">'
-		elif v == "sd" and r == "d":
-			return '<td class="yyy">'
-		elif v == "d" and r == "r":
-			return '<td class="yyy">'
-		elif v == "r" and r == "d":
-			return '<td class="yyy">'
-		elif v == "m" and r == "r":
-			return '<td class="yyy">'
-		elif v == "r" and r == "m":
+		elif (
+			v == r
+			or (v == "sk" and r == "k")
+			or (v == "k" and r == "sk")
+			or (v == "d" and r == "sd")
+			or (v == "sd" and r == "d")
+			or (v == "d" and r == "r")
+			or (v == "r" and r == "d")
+			or (v == "m" and r == "r")
+			or (v == "r" and r == "m")
+		):
 			return '<td class="yyy">'
 		else:
 			return '<td class="nnn">'
@@ -757,15 +693,13 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 		)
 		xml = u.read()
 		u.close()
-		pagelist = re.findall(r"<page.*?>.*?</page>", xml.decode(), re.DOTALL)
+		pagelist = PAGE_LIST_PATTERN.findall(xml.decode())
 		pagedict = {}
 		for i in pagelist:
 			try:
-				pagename = re.search(r"<page.*?title=\"(.*?)\"", i).group(1)
-				text = re.search(
-					r'<rev.*?xml:space="preserve">(.*?)</rev>', i, re.DOTALL
-				).group(1)
-				if re.search('<page.*?redirect="".*?>', i):  # AfD page is a redirect
+				pagename = PAGE_NAME_PATTERN.search(i).group(1)
+				text = PAGE_TEXT_PATTERN.search(i).group(1)
+				if PAGE_REDIRECT_PATTERN.search(i):  # AfD page is a redirect
 					continue
 				pagedict[html.unescape(pagename)] = text
 			except Exception:
@@ -799,24 +733,10 @@ def DBfirsteditor(
 
 def datefmt(datestr):
 	try:
-		tg = re.search("([A-Za-z]*) (\d{1,2}), (\d{4})", datestr)
+		tg = DATE_TG_PATTERN.search(datestr)
 		if tg is None:
 			return ""
-		monthmap = {
-			"01": "January",
-			"02": "February",
-			"03": "March",
-			"04": "April",
-			"05": "May",
-			"06": "June",
-			"07": "July",
-			"08": "August",
-			"09": "September",
-			"10": "October",
-			"11": "November",
-			"12": "December",
-		}
-		month = [k for k, v in monthmap.items() if v == tg.group(1)][0]
+		month = [k for k, v in MONTH_MAP.items() if v == tg.group(1)][0]
 		day = tg.group(2)
 		year = tg.group(3)
 		if len(day) == 1:
