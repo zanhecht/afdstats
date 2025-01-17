@@ -226,7 +226,7 @@ def app(environ, start_response):
 		startdatestr = ""
 		if startdate:
 			datestr = datetime.datetime.strptime(startdate, "%Y%m%d")
-			startdatestr = f" (from {datestr.strftime('%b %d %Y')} and earlier)"
+			startdatestr = f" (from {datestr:'%b %d %Y'} and earlier)"
 		output.append(
 			"Total number of unique AfD pages edited by {}{}: {}<br>".format(
 				username, startdatestr, str(len(results))
