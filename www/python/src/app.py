@@ -453,34 +453,9 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 					+ f"<small>Next {maxsearch} AfDs &rarr;</small></a><br>"
 				)
 
-			afds_output = [
-				f"""<h2>Individual AfDs</h2>",
-{nextlink}
-</div>
-<table>
-<thead>
-<tr>
-	<th scope="col">Page</th>
-	<th scope="col">Vote date</th>
-	<th scope="col">Vote</th>
-	<th scope="col">Result</th>
-</tr>
-</thead>
-<tbody>"""
-			]
-
+			afd_rows = []
 			for i in tablelist:
-				afds_output.append(
-					f"""<tr>
-	<td>{link(i[0])}</td>
-	<td>{i[2]}</td>
-	<td>{i[1]}{" (Nom)" if i[4] == 1 else ""}</td>
-	{match(matchstats, i[1], i[3], i[5])}
-</tr>"""
-				)
-			afds_output.append(
-				f'</tbody>\n</table>\n<div style="width:875px;">{nextlink}<br>'
-			)
+				afd_rows.append(afdrow(matchstats, i))  # update matchstats
 
 			total_votes = sum(matchstats)
 			if total_votes > 0:
@@ -505,7 +480,25 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 							float(matchstats[1]) / (total_votes - matchstats[2]),
 						)
 					)
-			output.append("\n".join(afds_output))
+			output.append(
+				f"""<h2>Individual AfDs</h2>",
+{nextlink}
+</div>
+<table>
+<thead>
+<tr>
+	<th scope="col">Page</th>
+	<th scope="col">Vote date</th>
+	<th scope="col">Vote</th>
+	<th scope="col">Result</th>
+</tr>
+</thead>
+<tbody>
+{afd_rows.join("\n")}
+</tbody>
+</table>
+<div style="width:875px;">{nextlink}<br>"""
+			)
 		else:
 			output.append(f"<br><br>No votes found.<!--{stats}-->")
 
@@ -647,27 +640,29 @@ def updatestats(stats, v, r):  # Update the stats variable for votes
 	stats[vv + rr] += 1
 
 
-def match(matchstats, v, r, drv):  # Update the matchstats variable
+def afdrow(matchstats, i):  # Update the matchstats variable and generate table row
+	v, r, drv = i[1], i[3], i[5]
 	c = "m"
 	if r == "No Consensus":
 		matchstats[2] += 1
 	elif (
 		v == r
-		or (v == "Speedy Keep" and r == "Keep")
-		or (r == "Speedy Keep" and v == "Keep")
-		or (v == "Speedy Delete" and r == "Delete")
-		or (r == "Speedy Delete" and v == "Delete")
-		or (r == "Redirect" and v == "Delete")
-		or (r == "Delete" and v == "Redirect")
-		or (r == "Merge" and v == "Redirect")
-		or (r == "Redirect" and v == "Merge")
+		or ((v in ["Speedy Keep", "Keep"]) and (r in ["Speedy Keep", "Keep"]))
+		or ((v in ["Speedy Delete", "Delete"]) and (r in ["Speedy Delete", "Delete"]))
+		or ((v in ["Redirect", "Delete"]) and (r in ["Redirect", "Delete"]))
+		or ((v in ["Redirect", "Merge"]) and (r in ["Redirect", "Merge"]))
 	):
 		matchstats[0] += 1
 		c = "y"
 	elif r != "Not closed yet" and r != "UNDETERMINED" and v != "UNDETERMINED":
 		matchstats[1] += 1
 		c = "n"
-	return f'<td class="{c}">{r}{drv}</td>'
+	return f"""<tr>
+	<td>{link(i[0])}</td>
+	<td>{i[2]}</td>
+	<td>{v}{" (Nom)" if i[4] == 1 else ""}</td>
+	<td class="{c}">{r}{drv}</td>
+</tr>"""
 
 
 def matrixmatch(stats, v, r):
