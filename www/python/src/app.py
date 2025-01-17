@@ -15,13 +15,13 @@ import html
 APP_NAME = "afdstats.py"
 MAX_LIMIT = 500
 WIKI_URL = "http://en.wikipedia.org/"
-FOOTER = "<footer>Bugs, suggestions, questions? Contact the"
-+' <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a> at'
-+' <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">'
-+" Wikipedia talk:AfD stats</a>. • "
-+'<a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats"'
-+'title="afdstats on Wikimedia GitLab">Source code</a></footer>'
+FOOTER = """<footer>Bugs, suggestions, questions? Contact the
+<a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a> at'
+<a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia talk:AfD
+stats</a>. • <a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats"
+title="afdstats on Wikimedia GitLab">Source code</a></footer>"""
 
+TRUES = ["1", "true", "yes"]
 STATS_RESULTS = ["k", "d", "sk", "sd", "m", "r", "t", "u", "nc"]
 STATS_VOTES = STATS_RESULTS[:-1]
 RESULT_TYPES = [
@@ -147,6 +147,13 @@ def app(environ, start_response):
 <title>AfD Stats - Results</title>
 <link rel="stylesheet" type="text/css" href="/afdstats.css">
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script>
+	function toggleNV(e) {
+		var wasHidden = document.getElementById('noVote').style.display === 'none';
+		document.getElementById('noVote').style.display = wasHidden ? 'block' : 'none';
+		e.textContent = (wasHidden ? 'Hide' : 'Show') + e.textContent.slice(4);
+	}
+</script>
 </head>
 <body>
 <div style="width:875px;">
@@ -157,8 +164,7 @@ def app(environ, start_response):
 		starttime = time.time()
 
 		##################Validate input
-		qs = environ.get("QUERY_STRING", "")
-		form = urllib.parse.parse_qs(qs)
+		form = urllib.parse.parse_qs(environ.get("QUERY_STRING", ""))
 		username = (
 			urllib.parse.unquote_plus(form.get("name", [""])[0])
 			.replace("_", " ")
@@ -168,7 +174,7 @@ def app(environ, start_response):
 			return errorout(
 				start_response,
 				output,
-				f"No username entered.<!--{qs}-->",
+				f"No username entered.<!--{environ.get('QUERY_STRING', '')}-->",
 			)
 		username = username[0].capitalize() + username[1:]
 		altusername = (
@@ -177,11 +183,9 @@ def app(environ, start_response):
 			.strip()
 		)
 		startdate = str(form.get("startdate", [""])[0])
-		trues = ["1", "true", "yes"]
-		nomsonly = True if form.get("nomsonly", [""])[0].lower() in trues else False
-		undetermined = (
-			True if form.get("undetermined", [""])[0].lower() in trues else False
-		)
+		nomsonly = form.get("nomsonly", [""])[0].lower() in TRUES
+		dev = form.get("dev", [""])[0].lower() in TRUES
+		undetermined = form.get("undetermined", [""])[0].lower() in TRUES
 		if undetermined is True:
 			votetypes.append("UNDETERMINED")
 			stats["UNDETERMINED"] = 0
@@ -197,7 +201,7 @@ def app(environ, start_response):
 				and int(startdate) > 20000000
 				and int(startdate) < 20300000
 			):
-				startdatestr = " AND rev_timestamp<=" + startdate + "235959"
+				startdatestr = f" AND rev_timestamp<={startdate}235959"
 		except Exception:
 			pass
 
@@ -209,19 +213,18 @@ def app(environ, start_response):
 			return errorout(
 				start_response,
 				output,
-				"No AfDs found. This user may not exist. Note that if the user's"
-				+ " username does not appear in the wikitext of their signature,"
-				+ " you may need to specify an alternate name.",
+				"""No AfDs found. This user may not exist. Note that if the user's"
+username does not appear in the wikitext of their signature, you may need to specify an
+alternate name.""",
 			)
 
 		output.append(
-			"<p>These statistics were compiled by an automated process, and may"
-			+ " contain errors or omissions due to the wide variety of styles with"
-			+ " which people cast votes at AfD. Any result fields which contain"
-			+ ' "UNDETERMINED" were not able to be parsed, and should be examined'
-			+ " manually.</p>"
+			"""<p>These statistics were compiled by an automated process, and may"
+contain errors or omissions due to the wide variety of styles with which people cast
+votes at AfD. Any result fields which contain "UNDETERMINED" were not able to be parsed,
+and should be examined manually.</p>
+<h2>Vote totals</h2>"""
 		)
-		output.append("<h2>Vote totals</h2>")
 
 		startdatestr = ""
 		if startdate:
@@ -229,14 +232,12 @@ def app(environ, start_response):
 			startdatestr = f" (from {datestr:'%b %d %Y'} and earlier)"
 		output.append(
 			"Total number of unique AfD pages edited by {}{}: {}<br>".format(
-				username, startdatestr, str(len(results))
+				username, startdatestr, len(results)
 			)
 		)
 
 		if len(results) > maxsearch:
-			output.append(
-				f"Only the last {str(maxsearch)} AfD pages were analyzed.<br>"
-			)
+			output.append(f"Only the last {maxsearch} AfD pages were analyzed.<br>")
 
 		##################Analyze results
 		pages = results[: min(maxsearch, len(results))]
@@ -256,16 +257,10 @@ def app(environ, start_response):
 		novotes = 0
 
 		output.append(
-			'<small><a href="javascript:void(0);" onClick="'
-			+ "if(document.getElementById('noVote').style.display === 'none') {"
-			+ "document.getElementById('noVote').style.display = 'block';"
-			+ "this.innerHTML='Hide pages without detected votes';"
-			+ "} else {"
-			+ "document.getElementById('noVote').style.display = 'none';"
-			+ "this.innerHTML='Show pages without detected votes';"
-			+ '}">Show pages without detected votes</a></small>'
+			"""<small><a id href="javascript:void(0);" onClick="toggleNV(this)">
+Show pages without detected votes</a></small>
+<ul id="noVote" style="display: none">"""
 		)
-		output.append('<ul id="noVote" style="display: none">')
 
 		for entry in pages:
 			try:
@@ -321,11 +316,7 @@ def app(environ, start_response):
 						# Sometimes, a "#top" will sneak in, so remove it
 						if voter.endswith("#top"):
 							voter = voter[:-4]
-						if "dev" in form and form["dev"][0].lower() in [
-							"1",
-							"true",
-							"yes",
-						]:
+						if dev is True:
 							output.append(f"<pre>{page}, {voter}, {vote}</pre>")
 
 						# Underscores are turned into spaces by MediaWiki
@@ -352,8 +343,9 @@ def app(environ, start_response):
 								(page, votetype, votetime, result, 0, deletionreviews)
 							)
 					except Exception as err:
-						# output.append(f"<br>ERROR: {str(err)}<br>") #debug
-						# output.append(html.escape(traceback.format_exc())) #debug
+						if dev is True:
+							output.append(f"<br>ERROR: {str(err)}<br>")
+							output.append(html.escape(traceback.format_exc()))
 						continue
 				if len(dupvotes) < 1:
 					if is_nominator:  # user is nominator
@@ -380,8 +372,9 @@ def app(environ, start_response):
 					tablelist.append(dupvotes[0])
 					updatestats(stats, dupvotes[0][1], dupvotes[0][3])
 			except Exception as err:
-				# output.append(f"<br>ERROR: {str(err)}<br>") #debug
-				# output.append(html.escape(traceback.format_exc())) #debug
+				if dev is True:
+					output.append(f"<br>ERROR: {str(err)}<br>")
+					output.append(html.escape(traceback.format_exc()))
 				continue
 		output.append("</ul>")
 		##################Print results tables
@@ -392,14 +385,12 @@ def app(environ, start_response):
 			output.append("<ul>")
 			for i in votetypes:
 				output.append(
-					"<li>{} votes: {} ({}%)</li>".format(
-						i, str(stats[i]), str(round((100.0 * stats[i]) / totalvotes, 1))
-					)
+					f"<li>{i} votes: {stats[i]} ({(stats[i] / totalvotes):.1%})</li>"
 				)
 			output.append("</ul>")
 			if novotes:
 				output.append(
-					f"The remaining {str(novotes)} pages had no discernible vote by this user."
+					f"The remaining {novotes} pages had no discernible vote by this user."
 				)
 			output.append(
 				"""<br>
@@ -426,9 +417,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			for vv in STATS_VOTES:
 				output.append(f"<tr>\n<th>{vv.upper()}</th>")
 				for rr in STATS_RESULTS:
-					output.append(
-						matrixmatch(stats, vv, rr) + str(stats[vv + rr]) + "</td>"
-					)
+					output.append(f"{matrixmatch(stats, vv, rr)}{stats[vv + rr]}</td>")
 				output.append("</tr>")
 			output.append(
 				"""</tbody>
@@ -451,45 +440,47 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			nextlink = ""
 			if len(tablelist) > 0 and tablelist[-1][2]:
 				nextlink = (
-					'<a href="{}?name={}&max={}&startdate={}&altname={}&undetermined={}">'.format(
+					'<a href="{}?name={}&max={}&startdate={}{}{}{}{}">'.format(
 						APP_NAME,
 						username.replace(" ", "_"),
-						str(maxsearch),
+						maxsearch,
 						datefmt(tablelist[-1][2]),
-						altusername,
-						str(undetermined),
+						f"&altname={altusername}" if (altusername != "") else "",
+						"&undetermined=1" if (undetermined is True) else "",
+						"&nomsonly=1" if (nomsonly is True) else "",
+						"&dev=1" if (dev is True) else "",
 					)
-					+ f"<small>Next {str(maxsearch)} AfDs &rarr;</small></a><br>"
+					+ f"<small>Next {maxsearch} AfDs &rarr;</small></a><br>"
 				)
 
-			afds_output = ["<h2>Individual AfDs</h2>"]
-			afds_output.append(nextlink)
-			afds_output.append("</div>")
-			afds_output.append(
-				"""<table>
+			afds_output = [
+				f"""<h2>Individual AfDs</h2>",
+{nextlink}
+</div>
+<table>
 <thead>
 <tr>
-<th scope="col">Page</th>
-<th scope="col">Vote date</th>
-<th scope="col">Vote</th>
-<th scope="col">Result</th>
+	<th scope="col">Page</th>
+	<th scope="col">Vote date</th>
+	<th scope="col">Vote</th>
+	<th scope="col">Result</th>
 </tr>
 </thead>
 <tbody>"""
-			)
+			]
 
 			for i in tablelist:
-				afds_output.append("<tr>")
-				afds_output.append(f"<td>{link(i[0])}</td>")
-				afds_output.append(f"<td>{i[2]}</td>")
-				afds_output.append(f"<td>{i[1]}{' (Nom)' if i[4] == 1 else ''}</td>")
-				matchcell = match(matchstats, i[1], i[3], i[5])
-				afds_output.append(matchcell)
-				afds_output.append("</tr>")
-			afds_output.append("</tbody>\n</table>")
-			afds_output.append('<div style="width:875px;">')
-			afds_output.append(nextlink)
-			afds_output.append("<br>")
+				afds_output.append(
+					f"""<tr>
+	<td>{link(i[0])}</td>
+	<td>{i[2]}</td>
+	<td>{i[1]}{" (Nom)" if i[4] == 1 else ""}</td>
+	{match(matchstats, i[1], i[3], i[5])}
+</tr>"""
+				)
+			afds_output.append(
+				f'</tbody>\n</table>\n<div style="width:875px;">{nextlink}<br>'
+			)
 
 			total_votes = sum(matchstats)
 			if total_votes > 0:
@@ -516,13 +507,16 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 					)
 			output.append("\n".join(afds_output))
 		else:
-			output.append(f"<br><br>No votes found.<!--{str(stats)}-->")
+			output.append(f"<br><br>No votes found.<!--{stats}-->")
 
-		elapsed = str(round(time.time() - starttime, 2))
-		output.append(f"<small>Elapsed time: {elapsed} seconds.</small><br>")
-		output.append(FOOTER)
-		output.append('<a href="/"><small>&larr;New search</small></a>')
-		output.append("</div>\n</body>\n</html>")
+		output.append(
+			f"""<small>Elapsed time: {(time.time() - starttime):.2f} seconds.</small><br>"
+{FOOTER}
+<a href="/"><small>&larr;New search</small></a>
+</div>
+</body>
+</html>"""
+		)
 		start_response("200 OK", [("Content-Type", "text/html")])
 		return ["\n".join(output).encode("utf-8")]
 
@@ -532,22 +526,22 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 		return errorout(
 			start_response,
 			output,
-			"{}<br>{}<br>Fatal error.".format(
-				html.escape(str(err)), html.escape(traceback.format_exc())
-			),
+			f"""{html.escape(str(err))}<br>
+{html.escape(traceback.format_exc())}<br>
+Fatal error.""",
 		)
 
 
 def queryDB(startdatestr, nomsonly, username):
 	##################Query database
-	querystr = "SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev"
-	+" JOIN page ON rev.rev_page=page_id"
-	+" JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor"
-	+"{} WHERE actor.actor_name=%s AND page_namespace=4"
-	+' AND page_title LIKE "Articles_for_deletion%%"'
-	+' AND NOT page_title LIKE "Articles_for_deletion/Log/%%"'
-	+"{} ORDER BY rev.rev_timestamp DESC;"
-	if nomsonly:
+	querystr = """SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev
+JOIN page ON rev.rev_page=page_id
+JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor
+{} WHERE actor.actor_name=%s AND page_namespace=4
+AND page_title LIKE "Articles_for_deletion%%"
+AND NOT page_title LIKE "Articles_for_deletion/Log/%%"
+{} ORDER BY rev.rev_timestamp DESC;"""
+	if nomsonly is True:
 		querystr = querystr.format(
 			"DISTINCT page_title, actor.actor_name",
 			"",
@@ -556,11 +550,9 @@ def queryDB(startdatestr, nomsonly, username):
 	else:
 		querystr = querystr.format(
 			"page_title, first_actor.actor_name",
-			" JOIN revision_userindex AS first_rev "
-			+ "ON first_rev.rev_page=page_id "
-			+ "AND first_rev.rev_parent_id=0 "
-			+ "JOIN actor_revision AS first_actor "
-			+ "ON first_actor.actor_id=first_rev.rev_actor",
+			"""JOIN revision_userindex AS first_rev ON first_rev.rev_page=page_id
+AND first_rev.rev_parent_id=0
+JOIN actor_revision AS first_actor ON first_actor.actor_id=first_rev.rev_actor""",
 			startdatestr,
 		)
 
@@ -591,7 +583,7 @@ def parsetime(t):
 	if tm is None:
 		return ""
 	else:
-		return tm.group(2) + " " + tm.group(1) + ", " + tm.group(3)
+		return f"{tm.group(2)} {tm.group(1)}, {tm.group(3)}"
 
 
 def findresults(thepage):  # Parse through the text of an AfD to find how it was closed
@@ -617,7 +609,7 @@ def findDRV(thepage, pagename):
 	try:
 		drvs = ""
 		drvcounter = 0
-		baseurl = WIKI_URL + "/wiki/Wikipedia:Deletion_review/Log/"
+		baseurl = f"{WIKI_URL}/wiki/Wikipedia:Deletion_review/Log/"
 		for drv in DRV_PATTERN.finditer(thepage):
 			drvdate = DRV_DATE_PATTERN.search(drv.group(1))
 			if drvdate:
@@ -633,7 +625,7 @@ def findDRV(thepage, pagename):
 					baseurl,
 					drvdate.group(1).strip().replace(" ", "_"),
 					nametext,
-					str(drvcounter),
+					drvcounter,
 				)
 		return drvs
 	except Exception:
@@ -724,7 +716,7 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 		for page in rawpagelist:
 			if page[0]:
 				p += urllib.parse.quote(
-					"Wikipedia:" + page[0].decode().replace("_", " ") + "|"
+					f"Wikipedia:{page[0].decode().replace('_', ' ')}|"
 				)
 		u = urlopen(
 			WIKI_URL
@@ -747,7 +739,7 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 				continue
 		return pagedict
 	except Exception as err:
-		return f"Unable to fetch page data. Please try again.<!--{str(err)}-->"
+		return f"Unable to fetch page data. Please try again.<!--{err}-->"
 
 
 def datefmt(datestr):
@@ -768,7 +760,7 @@ def datefmt(datestr):
 def link(p):
 	text = html.escape(p.replace("_", " ")[22:])
 	if len(text) > 64:
-		text = text[:61] + "..."
+		text = f"{text[:61]}..."
 	return '<a href="{}wiki/Wikipedia:{}">{}</a>'.format(
 		WIKI_URL, urllib.parse.quote(p), text
 	)
@@ -777,8 +769,8 @@ def link(p):
 def errorout(start_response, output, errorstr):
 	# General error handler, prints error message and aborts execution.
 	output.append(
-		f"<p>ERROR: {errorstr}</p>"
-		+ "<p>Please <a href='http://afdstats.toolforge.org/'>try again</a>.</p>"
+		f"""<p>ERROR: {errorstr}</p>
+<p>Please <a href='http://afdstats.toolforge.org/'>try again</a>.</p>"""
 	)
 	output.append(FOOTER)
 	output.append("</div>\n</body>\n</html>")
