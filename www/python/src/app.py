@@ -201,7 +201,7 @@ def app(environ, start_response):
 				and int(startdate) > 20000000
 				and int(startdate) < 20300000
 			):
-				startdatestr = f" AND rev_timestamp<={startdate}235959"
+				startdatestr = f"AND rev_timestamp<={startdate}235959"
 		except Exception:
 			pass
 
@@ -213,13 +213,13 @@ def app(environ, start_response):
 			return errorout(
 				start_response,
 				output,
-				"""No AfDs found. This user may not exist. Note that if the user's"
+				"""No AfDs found. This user may not exist. Note that if the user's
 username does not appear in the wikitext of their signature, you may need to specify an
 alternate name.""",
 			)
 
 		output.append(
-			"""<p>These statistics were compiled by an automated process, and may"
+			"""<p>These statistics were compiled by an automated process, and may
 contain errors or omissions due to the wide variety of styles with which people cast
 votes at AfD. Any result fields which contain "UNDETERMINED" were not able to be parsed,
 and should be examined manually.</p>
@@ -481,7 +481,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 						)
 					)
 			output.append(
-				f"""<h2>Individual AfDs</h2>",
+				f"""<h2>Individual AfDs</h2>
 {nextlink}
 </div>
 <table>
@@ -493,9 +493,11 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 	<th scope="col">Result</th>
 </tr>
 </thead>
-<tbody>
-{afd_rows.join("\n")}
-</tbody>
+<tbody>"""
+			)
+			output.append("\n".join(afd_rows))
+			output.append(
+				f"""</tbody>
 </table>
 <div style="width:875px;">{nextlink}<br>"""
 			)
@@ -503,7 +505,7 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			output.append(f"<br><br>No votes found.<!--{stats}-->")
 
 		output.append(
-			f"""<small>Elapsed time: {(time.time() - starttime):.2f} seconds.</small><br>"
+			f"""<small>Elapsed time: {(time.time() - starttime):.2f} seconds.</small><br>
 {FOOTER}
 <a href="/"><small>&larr;New search</small></a>
 </div>
@@ -527,26 +529,30 @@ Fatal error.""",
 
 def queryDB(startdatestr, nomsonly, username):
 	##################Query database
-	querystr = """SELECT {}, rev.rev_timestamp FROM revision_userindex AS rev
+	querystr = """SELECT page_title, {}
+FROM revision_userindex AS rev
 JOIN page ON rev.rev_page=page_id
 JOIN actor_revision AS actor ON actor.actor_id=rev.rev_actor
-{} WHERE actor.actor_name=%s AND page_namespace=4
+{} WHERE actor.actor_name=%s
+AND page_namespace=4
 AND page_title LIKE "Articles_for_deletion%%"
 AND NOT page_title LIKE "Articles_for_deletion/Log/%%"
-{} ORDER BY rev.rev_timestamp DESC;"""
+{} {} ORDER BY rev.rev_timestamp DESC;"""
 	if nomsonly is True:
 		querystr = querystr.format(
-			"DISTINCT page_title, actor.actor_name",
+			"actor.actor_name, rev.rev_timestamp",
 			"",
-			" AND rev.rev_parent_id=0" + startdatestr,
+			startdatestr,
+			"AND rev.rev_parent_id=0",
 		)
 	else:
 		querystr = querystr.format(
-			"page_title, first_actor.actor_name",
+			"first_actor.actor_name, MIN(rev.rev_timestamp) AS rev_timestamp",
 			"""JOIN revision_userindex AS first_rev ON first_rev.rev_page=page_id
 AND first_rev.rev_parent_id=0
 JOIN actor_revision AS first_actor ON first_actor.actor_id=first_rev.rev_actor""",
 			startdatestr,
+			"GROUP BY page.page_title, first_actor.actor_name",
 		)
 
 	db = pymysql.connect(
