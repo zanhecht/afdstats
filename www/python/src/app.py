@@ -15,11 +15,40 @@ import html
 APP_NAME = "afdstats.py"
 MAX_LIMIT = 500
 WIKI_URL = "http://en.wikipedia.org/"
-FOOTER = """<footer>Bugs, suggestions, questions? Contact the
+HTML_TEMPLATE = """<!doctype html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+<title>AfD Stats - Results</title>
+<link rel="stylesheet" type="text/css" href="/afdstats.css">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<script>
+	function toggleNV(e) {{
+		var wasHidden = document.getElementById('noVote').style.display === 'none';
+		document.getElementById('noVote').style.display = wasHidden ? 'block' : 'none';
+		e.textContent = (wasHidden ? 'Hide' : 'Show') + e.textContent.slice(4);
+	}}
+</script>
+</head>
+<body>
+<div style="width:875px;">
+<a href='/'><small>&larr;New search</small></a>
+{}
+<footer>Bugs, suggestions, questions? Contact the
 <a href="https://toolsadmin.wikimedia.org/tools/id/afdstats">maintainers</a> at
 <a href="https://en.wikipedia.org/wiki/Wikipedia_talk:AfD_stats">Wikipedia talk:AfD
 stats</a>. • <a href="https://gitlab.wikimedia.org/toolforge-repos/afdstats"
-title="afdstats on Wikimedia GitLab">Source code</a></footer>"""
+title="afdstats on Wikimedia GitLab">Source code</a></footer>
+<a href="/"><small>&larr;New search</small></a>
+</div>
+</body>
+</html>"""
+NOT_FOUND = """<!doctype html>
+<html>
+	<head><title>404 Not Found</title></head>
+	<body><h1>404 Not Found</h1></body>
+</html>"""
+
 
 TRUES = ["1", "true", "yes"]
 STATS_RESULTS = ["k", "d", "sk", "sd", "m", "r", "t", "u", "nc"]
@@ -126,8 +155,8 @@ VOTER_MATCH_PATTERN = re.compile(
 def app(environ, start_response):
 	# Produce 404 error if not accessed at APP_NAME
 	if environ.get("PATH_INFO", "/").lstrip("/") != APP_NAME:
-		start_response("404 Not Found", [("Content-Type", "text/plain")])
-		return [b"404 Not Found"]
+		start_response("404 Not Found", [("Content-Type", "text/html")])
+		return [NOT_FOUND.encode("utf-8")]
 
 	# initialize variables
 	matchstats = [0, 0, 0]  # matches, non-matches, no consensus
@@ -139,26 +168,7 @@ def app(environ, start_response):
 	for v in votetypes:
 		stats[v] = 0
 
-	output = [
-		"""<!doctype html>
-<html>
-<head>
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-<title>AfD Stats - Results</title>
-<link rel="stylesheet" type="text/css" href="/afdstats.css">
-<link rel="icon" type="image/x-icon" href="/favicon.ico">
-<script>
-	function toggleNV(e) {
-		var wasHidden = document.getElementById('noVote').style.display === 'none';
-		document.getElementById('noVote').style.display = wasHidden ? 'block' : 'none';
-		e.textContent = (wasHidden ? 'Hide' : 'Show') + e.textContent.slice(4);
-	}
-</script>
-</head>
-<body>
-<div style="width:875px;">
-<a href='/'><small>&larr;New search</small></a>"""
-	]
+	output = []
 
 	try:
 		starttime = time.time()
@@ -505,15 +515,10 @@ whereas red cells indicate that the vote and the end result did not match.</p>
 			output.append(f"<br><br>No votes found.<!--{stats}-->")
 
 		output.append(
-			f"""<small>Elapsed time: {(time.time() - starttime):.2f} seconds.</small><br>
-{FOOTER}
-<a href="/"><small>&larr;New search</small></a>
-</div>
-</body>
-</html>"""
+			f"<small>Elapsed time: {(time.time() - starttime):.2f} seconds.</small><br>"
 		)
 		start_response("200 OK", [("Content-Type", "text/html")])
-		return ["\n".join(output).encode("utf-8")]
+		return [HTML_TEMPLATE.format("\n".join(output)).encode("utf-8")]
 
 	except SystemExit:
 		sys.exit(0)
@@ -773,7 +778,5 @@ def errorout(start_response, output, errorstr):
 		f"""<p>ERROR: {errorstr}</p>
 <p>Please <a href='http://afdstats.toolforge.org/'>try again</a>.</p>"""
 	)
-	output.append(FOOTER)
-	output.append("</div>\n</body>\n</html>")
 	start_response("500 Internal Server Error", [("Content-Type", "text/html")])
-	return ["\n".join(output).encode("utf-8")]
+	return [HTML_TEMPLATE.format("\n".join(output)).encode("utf-8")]
