@@ -560,12 +560,11 @@ JOIN actor_revision AS first_actor ON first_actor.actor_id=first_rev.rev_actor""
 			"GROUP BY page.page_title, first_actor.actor_name",
 		)
 
-	db = pymysql.connect(
+	with pymysql.connect(
 		database="enwiki_p",
 		host="enwiki.web.db.svc.wikimedia.cloud",
 		read_default_file=os.path.expanduser("~/replica.my.cnf"),
-	)
-	with db:
+	) as db:
 		with db.cursor() as cursor:
 			cursor.execute(
 				querystr,
@@ -724,15 +723,14 @@ def APIpagedata(rawpagelist):  # Grabs page text for all of the AfDs using the A
 				p += urllib.parse.quote(
 					f"Wikipedia:{page[0].decode().replace('_', ' ')}|"
 				)
-		u = urlopen(
+		with urlopen(
 			WIKI_URL
 			+ "w/api.php"
 			+ "?action=query&prop=revisions|info&rvprop=content&format=xml&titles="
 			+ p[:-3]
-		)
-		xml = u.read()
-		u.close()
-		pagelist = PAGE_LIST_PATTERN.findall(xml.decode())
+		) as u:
+			xml = u.read().decode()
+		pagelist = PAGE_LIST_PATTERN.findall(xml)
 		pagedict = {}
 		for i in pagelist:
 			try:
